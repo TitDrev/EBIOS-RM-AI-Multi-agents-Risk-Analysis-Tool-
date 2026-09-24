@@ -238,7 +238,12 @@ def _corrections_block(state: Mapping[str, Any]) -> str:
 
 
 def build_user_prompt(si_description: dict, state: Mapping[str, Any] | None = None) -> str:
-    """Construit le prompt utilisateur à partir de la description du SI (données délimitées)."""
+    """Construit le prompt utilisateur à partir de la description du SI (données délimitées).
+
+    Accepte la description structurée (nom, écosystème, flux…) et un ou plusieurs
+    documents bruts (PDF/MD/JSON extraits) fournis par l'analyste, tous encadrés
+    par les balises [DONNÉES] (non exécutables).
+    """
     from app.core.prompt_guard import detect_injection
 
     parts = [f"DESCRIPTION DU SYSTÈME D'INFORMATION : {DATA_OPEN}"]
@@ -250,8 +255,18 @@ def build_user_prompt(si_description: dict, state: Mapping[str, Any] | None = No
         ("contraintes", "Contraintes"),
     ]:
         value = si_description.get(key)
-        if value:
+        if value and key != "nom":
             parts.append(f"{label} : {value}")
+
+    documents = si_description.get("documents") or []
+    if not documents and isinstance(si_description.get("document"), str):
+        documents = [{"titre": si_description.get("nom", "Document"), "contenu": si_description["document"]}]
+    for doc in documents:
+        titre = doc.get("titre") or doc.get("name") or "Document"
+        contenu = doc.get("contenu") or doc.get("content") or ""
+        if contenu:
+            parts.append(f"### {titre}\n{contenu}")
+
     parts.append(DATA_CLOSE)
     detected = detect_injection(json.dumps(si_description, ensure_ascii=False))
     if detected:

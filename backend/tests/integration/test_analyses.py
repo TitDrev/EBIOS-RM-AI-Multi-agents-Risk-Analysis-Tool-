@@ -242,3 +242,45 @@ async def test_compare_two_analyses(client, mock_llm):
     assert body["etude_a"]["nom"] == "étude 1"
     assert body["etude_b"]["nom"] == "étude 2"
     assert "differences" in body
+
+
+@pytest.mark.asyncio
+async def test_upload_analysis_from_documents(client, mock_llm):
+    token = await _register_and_token(client)
+    headers = {"Authorization": f"Bearer {token}"}
+
+    markdown = (
+        "# SI de démonstration\n\nServeur web public et base de données clients.\n"
+        "Le paiement est délégué à un prestataire externe (PSP)."
+    )
+    struct = (
+        '{"nom": "Boutique importée", "ecosysteme": "Serveur web + base clients + PSP", '
+        '"contexte_metier": "PME e-commerce RGPD"}'
+    )
+
+    resp = await client.post(
+        "/api/analyses/upload",
+        files=[
+            ("files", ("description.json", struct, "application/json")),
+            ("files", ("note_architecture.md", markdown, "text/markdown")),
+        ],
+        data={"name": "Import test"},
+        headers=headers,
+    )
+    assert resp.status_code == 201, resp.text
+    body = resp.json()
+    assert body["name"] == "Boutique importée"  # le nom vient du JSON
+    assert len(body["si_description"]["documents"]) == 2
+    assert body["si_description"]["contexte_metier"] == "PME e-commerce RGPD"
+
+    # Le document est bien intégré à la base de connaissances (RAG).
+    from sqlalchemy import select
+
+    from app.database import async_session_factory
+    from app.models.knowledge import KnowledgeDocument
+
+    async with async_session_factory() as session:
+        doc = await session.scalar(
+            select(KnowledgeDocument).where(KnowledgeDocument.title == "note_architecture")
+        )
+        assert doc is not None and doc.source == "user-document"
