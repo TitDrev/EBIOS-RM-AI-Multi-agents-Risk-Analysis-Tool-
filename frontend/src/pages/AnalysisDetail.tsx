@@ -307,6 +307,10 @@ function WorkshopCard({ workshop, onValidate }: { workshop: Workshop; onValidate
   );
 }
 
+const TH = "border-b border-slate-200 px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-500";
+const TD = "border-b border-slate-100 px-3 py-2 align-top text-slate-700";
+const TABLE = "w-full border-collapse text-sm";
+
 function Cadrage({ output }: { output: CadrageOutput }) {
   const besoins: Record<string, string> = {
     disponibilite: "bg-blue-100 text-blue-700",
@@ -315,55 +319,117 @@ function Cadrage({ output }: { output: CadrageOutput }) {
     tracabilite: "bg-fuchsia-100 text-fuchsia-700",
   };
   return (
-    <div className="space-y-3 text-sm">
-      <div>
-        <p className="font-medium text-slate-700">Périmètre</p>
+    <div className="space-y-4 text-sm">
+      <div className="rounded border p-3">
+        <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Périmètre</p>
         <p className="text-slate-600">{output.perimetre}</p>
       </div>
-      <div className="grid gap-3 md:grid-cols-2">
-        <div>
-          <p className="font-medium text-slate-700">Biens essentiels</p>
-          <ul className="mt-1 space-y-1 text-slate-600">
-            {output.biens_essentiels.map((b) => (
-              <li key={b.name} className="rounded bg-slate-50 px-2 py-1">
-                {b.name}
-              </li>
-            ))}
-          </ul>
+
+      {output.biens_essentiels.length > 0 && (
+        <div className="rounded border">
+          <p className="border-b bg-slate-50 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Biens essentiels
+          </p>
+          <table className={TABLE}>
+            <thead>
+              <tr className="bg-slate-50/50">
+                <th className={TH}>Nom</th>
+                <th className={TH}>Description</th>
+              </tr>
+            </thead>
+            <tbody>
+              {output.biens_essentiels.map((b) => (
+                <tr key={b.name}>
+                  <td className={TD + " font-medium"}>{b.name}</td>
+                  <td className={TD}>{b.description}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-        <div>
-          <p className="font-medium text-slate-700">Biens supports</p>
-          <ul className="mt-1 space-y-1 text-slate-600">
-            {output.biens_supports.map((b) => (
-              <li key={b.name} className="rounded bg-slate-50 px-2 py-1">
-                {b.name} <span className="text-xs text-slate-400">→ {b.supports}</span>
-              </li>
-            ))}
-          </ul>
+      )}
+
+      {output.biens_supports.length > 0 && (
+        <div className="rounded border">
+          <p className="border-b bg-slate-50 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Biens supports
+          </p>
+          <table className={TABLE}>
+            <thead>
+              <tr className="bg-slate-50/50">
+                <th className={TH}>Nom</th>
+                <th className={TH}>Description</th>
+                <th className={TH}>Supporte</th>
+              </tr>
+            </thead>
+            <tbody>
+              {output.biens_supports.map((b) => (
+                <tr key={b.name}>
+                  <td className={TD + " font-medium"}>{b.name}</td>
+                  <td className={TD}>{b.description}</td>
+                  <td className={TD}>{b.supports}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-      </div>
-      <div>
-        <p className="font-medium text-slate-700">Événements redoutés</p>
-        <div className="mt-1 space-y-1">
-          {output.evenements_redoutes.map((e, i) => (
-            <div key={i} className="flex flex-wrap items-center gap-2 rounded bg-slate-50 px-2 py-1">
-              <span className="text-slate-600">{e.label}</span>
-              <Badge value={e.besoin} map={besoins} />
-              <Badge value={e.gravite} map={GRAVITY} />
-            </div>
-          ))}
+      )}
+
+      {output.evenements_redoutes.length > 0 && (
+        <div className="rounded border">
+          <p className="border-b bg-slate-50 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Événements redoutés
+          </p>
+          <table className={TABLE}>
+            <thead>
+              <tr className="bg-slate-50/50">
+                <th className={TH}>Bien</th>
+                <th className={TH}>Besoin</th>
+                <th className={TH}>Description</th>
+                <th className={TH}>Gravité</th>
+              </tr>
+            </thead>
+            <tbody>
+              {output.evenements_redoutes.map((e, i) => (
+                <tr key={i}>
+                  <td className={TD}>{e.bien_essentiel}</td>
+                  <td className={TD}>
+                    <Badge value={e.besoin} map={besoins} />
+                  </td>
+                  <td className={TD}>{e.label}</td>
+                  <td className={TD}>
+                    <Badge value={e.gravite} map={GRAVITY} />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-      </div>
+      )}
+
       {output.socle_securite.length > 0 && (
-        <div>
-          <p className="font-medium text-slate-700">Socle de sécurité</p>
-          <ul className="mt-1 space-y-1 text-slate-600">
-            {output.socle_securite.map((m, i) => (
-              <li key={i} className="rounded bg-slate-50 px-2 py-1">
-                {m.mesure} <span className="text-xs text-slate-400">· {m.referentiel}</span>
-              </li>
-            ))}
-          </ul>
+        <div className="rounded border">
+          <p className="border-b bg-slate-50 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Socle de sécurité
+          </p>
+          <table className={TABLE}>
+            <thead>
+              <tr className="bg-slate-50/50">
+                <th className={TH}>Mesure</th>
+                <th className={TH}>Référentiel</th>
+                <th className={TH}>Écart</th>
+              </tr>
+            </thead>
+            <tbody>
+              {output.socle_securite.map((m, i) => (
+                <tr key={i}>
+                  <td className={TD}>{m.mesure}</td>
+                  <td className={TD}>{m.referentiel}</td>
+                  <td className={TD}>{m.ecart || "—"}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
     </div>
@@ -378,60 +444,37 @@ function SourcesRisques({ sources }: { sources: SourceRisque[] }) {
   };
   if (sources.length === 0) return <p className="text-sm text-slate-500">Aucune source.</p>;
   return (
-    <div className="space-y-2 text-sm">
-      {sources.map((s, i) => (
-        <div key={i} className="rounded border px-3 py-2">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="font-medium">{s.name}</span>
-            <Badge value={s.type} map={SOURCE_TYPE} />
-            <Badge value={s.pertinence} map={pertinence} />
-            {s.capacite && (
-              <span className="ml-auto text-xs text-slate-500">
-                capacité <Badge value={s.capacite} map={GRAVITY} />
-              </span>
-            )}
-          </div>
-          <p className="mt-1 text-xs text-slate-500">
-            {s.objectif} · {s.motivation}
-            {s.biens_vises.length > 0 && ` · vise : ${s.biens_vises.join(", ")}`}
-          </p>
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function Scenarios({ scenarios }: { scenarios: ScenarioStrategique[] }) {
-  if (scenarios.length === 0) return <p className="text-sm text-slate-500">Aucun scénario.</p>;
-  return (
-    <div className="overflow-x-auto text-sm">
-      <table className="w-full border-collapse">
+    <div className="rounded border">
+      <p className="border-b bg-slate-50 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+        Sources de risques (SR / objectif visé)
+      </p>
+      <table className={TABLE}>
         <thead>
-          <tr className="border-b text-left">
-            <th className="py-1 pr-2">ID</th>
-            <th className="py-1 pr-2">Source</th>
-            <th className="py-1 pr-2">Événement redouté</th>
-            <th className="py-1 pr-2">Bien</th>
-            <th className="py-1 pr-2">Gravité</th>
-            <th className="py-1 pr-2">Vraisemblance</th>
-            <th className="py-1">Niveau</th>
+          <tr className="bg-slate-50/50">
+            <th className={TH}>Type</th>
+            <th className={TH}>Nom</th>
+            <th className={TH}>Objectif (OV)</th>
+            <th className={TH}>Motivation</th>
+            <th className={TH}>Capacité</th>
+            <th className={TH}>Biens visés</th>
+            <th className={TH}>Pertinence</th>
           </tr>
         </thead>
         <tbody>
-          {scenarios.map((s) => (
-            <tr key={s.identifiant} className="border-b align-top">
-              <td className="py-1 pr-2 font-semibold">{s.identifiant}</td>
-              <td className="py-1 pr-2">{s.source_risque}</td>
-              <td className="py-1 pr-2">{s.evenement_redoute}</td>
-              <td className="py-1 pr-2">{s.bien_essentiel}</td>
-              <td className="py-1 pr-2">
-                <Badge value={s.gravite} map={GRAVITY} />
+          {sources.map((s, i) => (
+            <tr key={i}>
+              <td className={TD}>
+                <Badge value={s.type} map={SOURCE_TYPE} />
               </td>
-              <td className="py-1 pr-2">
-                <Badge value={s.vraisemblance} map={LIKELIHOOD} />
+              <td className={TD + " font-medium"}>{s.name}</td>
+              <td className={TD}>{s.objectif}</td>
+              <td className={TD}>{s.motivation}</td>
+              <td className={TD}>
+                {s.capacite ? <Badge value={s.capacite} map={GRAVITY} /> : "—"}
               </td>
-              <td className="py-1">
-                <Badge value={s.niveau} map={LEVEL} />
+              <td className={TD}>{s.biens_vises.join(", ")}</td>
+              <td className={TD}>
+                <Badge value={s.pertinence} map={pertinence} />
               </td>
             </tr>
           ))}
@@ -441,37 +484,110 @@ function Scenarios({ scenarios }: { scenarios: ScenarioStrategique[] }) {
   );
 }
 
+function Scenarios({ scenarios }: { scenarios: ScenarioStrategique[] }) {
+  if (scenarios.length === 0) return <p className="text-sm text-slate-500">Aucun scénario.</p>;
+  return (
+    <div className="rounded border">
+      <p className="border-b bg-slate-50 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+        Scénarios stratégiques
+      </p>
+      <div className="overflow-x-auto">
+        <table className={TABLE}>
+          <thead>
+            <tr className="bg-slate-50/50">
+              <th className={TH}>ID</th>
+              <th className={TH}>Source</th>
+              <th className={TH}>Événement redouté</th>
+              <th className={TH}>Bien</th>
+              <th className={TH}>Gravité</th>
+              <th className={TH}>Vraisemblance</th>
+              <th className={TH}>Niveau</th>
+            </tr>
+          </thead>
+          <tbody>
+            {scenarios.map((s) => (
+              <tr key={s.identifiant}>
+                <td className={TD + " font-semibold"}>{s.identifiant}</td>
+                <td className={TD}>{s.source_risque}</td>
+                <td className={TD}>{s.evenement_redoute}</td>
+                <td className={TD}>{s.bien_essentiel}</td>
+                <td className={TD}>
+                  <Badge value={s.gravite} map={GRAVITY} />
+                </td>
+                <td className={TD}>
+                  <Badge value={s.vraisemblance} map={LIKELIHOOD} />
+                </td>
+                <td className={TD}>
+                  <Badge value={s.niveau} map={LEVEL} />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
 function ScenariosOperationnels({ scenarios }: { scenarios: ScenarioOperationnel[] }) {
   if (scenarios.length === 0) return <p className="text-sm text-slate-500">Aucun scénario.</p>;
   return (
-    <div className="space-y-3 text-sm">
-      {scenarios.map((s) => (
-        <div key={s.identifiant} className="rounded border px-3 py-2">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="font-semibold">
-              {s.identifiant} ({s.scenario_strategique})
-            </span>
-            <Badge value={s.gravite} map={GRAVITY} />
-            <Badge value={s.vraisemblance} map={LIKELIHOOD} />
-            <Badge value={s.niveau} map={LEVEL} />
-            <span className="ml-auto text-xs text-slate-500">{s.source_risque}</span>
-          </div>
-          {s.techniques_attaque.length > 0 && (
-            <div className="mt-1 flex flex-wrap gap-1">
-              {s.techniques_attaque.map((t) => (
-                <span key={t} className="rounded bg-slate-100 px-1.5 text-xs">
-                  {t}
-                </span>
-              ))}
-            </div>
-          )}
-          <ol className="mt-2 list-decimal pl-5 text-slate-600">
-            {s.chemin_attaque.map((step, i) => (
-              <li key={i}>{step}</li>
+    <div className="rounded border">
+      <p className="border-b bg-slate-50 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+        Scénarios opérationnels
+      </p>
+      <div className="overflow-x-auto">
+        <table className={TABLE}>
+          <thead>
+            <tr className="bg-slate-50/50">
+              <th className={TH}>ID</th>
+              <th className={TH}>Stratégique</th>
+              <th className={TH}>Source</th>
+              <th className={TH}>Événement</th>
+              <th className={TH}>Gravité</th>
+              <th className={TH}>Vraisemblance</th>
+              <th className={TH}>Niveau</th>
+              <th className={TH}>Techniques</th>
+              <th className={TH}>Chemin d'attaque</th>
+            </tr>
+          </thead>
+          <tbody>
+            {scenarios.map((s) => (
+              <tr key={s.identifiant}>
+                <td className={TD + " font-semibold"}>{s.identifiant}</td>
+                <td className={TD}>{s.scenario_strategique}</td>
+                <td className={TD}>{s.source_risque}</td>
+                <td className={TD}>{s.evenement_redoute}</td>
+                <td className={TD}>
+                  <Badge value={s.gravite} map={GRAVITY} />
+                </td>
+                <td className={TD}>
+                  <Badge value={s.vraisemblance} map={LIKELIHOOD} />
+                </td>
+                <td className={TD}>
+                  <Badge value={s.niveau} map={LEVEL} />
+                </td>
+                <td className={TD}>
+                  <div className="flex flex-wrap gap-1">
+                    {s.techniques_attaque.map((t) => (
+                      <span key={t} className="rounded bg-slate-100 px-1.5 text-xs">
+                        {t}
+                      </span>
+                    ))}
+                  </div>
+                </td>
+                <td className={TD}>
+                  <ol className="list-decimal pl-4 text-slate-600">
+                    {s.chemin_attaque.map((step, i) => (
+                      <li key={i}>{step}</li>
+                    ))}
+                  </ol>
+                </td>
+              </tr>
             ))}
-          </ol>
-        </div>
-      ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
@@ -479,60 +595,63 @@ function ScenariosOperationnels({ scenarios }: { scenarios: ScenarioOperationnel
 function Traitement({ output }: { output: TraitementOutput }) {
   const risques = output.risques ?? [];
   return (
-    <div className="space-y-3 text-sm">
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse">
-          <thead>
-            <tr className="border-b text-left">
-              <th className="py-1 pr-2">ID</th>
-              <th className="py-1 pr-2">Événement</th>
-              <th className="py-1 pr-2">Gravité</th>
-              <th className="py-1 pr-2">Vraisemblance</th>
-              <th className="py-1 pr-2">Niveau</th>
-              <th className="py-1 pr-2">Traitement</th>
-              <th className="py-1">Résiduel</th>
-            </tr>
-          </thead>
-          <tbody>
-            {risques.map((r) => (
-              <tr key={r.identifiant} className="border-b align-top">
-                <td className="py-1 pr-2 font-semibold">{r.identifiant}</td>
-                <td className="py-1 pr-2">{r.evenement_redoute || r.scenario_operationnel}</td>
-                <td className="py-1 pr-2">
-                  <Badge value={r.gravite} map={GRAVITY} />
-                </td>
-                <td className="py-1 pr-2">
-                  <Badge value={r.vraisemblance} map={LIKELIHOOD} />
-                </td>
-                <td className="py-1 pr-2">
-                  <Badge value={r.niveau} map={LEVEL} />
-                </td>
-                <td className="py-1 pr-2">
-                  <span className={TREATMENT[r.traitement] ?? ""}>{r.traitement}</span>
-                </td>
-                <td className="py-1">
-                  <Badge value={r.risque_residuel} map={LEVEL} />
-                </td>
+    <div className="space-y-4 text-sm">
+      <div className="rounded border">
+        <p className="border-b bg-slate-50 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+          Registre des risques
+        </p>
+        <div className="overflow-x-auto">
+          <table className={TABLE}>
+            <thead>
+              <tr className="bg-slate-50/50">
+                <th className={TH}>ID</th>
+                <th className={TH}>Événement</th>
+                <th className={TH}>Gravité</th>
+                <th className={TH}>Vraisemblance</th>
+                <th className={TH}>Niveau</th>
+                <th className={TH}>Traitement</th>
+                <th className={TH}>Résiduel</th>
+                <th className={TH}>Mesures</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      {risques[0] && (
-        <div>
-          <p className="font-medium text-slate-700">Mesures proposées</p>
-          <ul className="mt-1 space-y-1 text-slate-600">
-            {risques[0].mesures.map((m, i) => (
-              <li key={i} className="rounded bg-slate-50 px-2 py-1">
-                {m}
-              </li>
-            ))}
-          </ul>
+            </thead>
+            <tbody>
+              {risques.map((r) => (
+                <tr key={r.identifiant}>
+                  <td className={TD + " font-semibold"}>{r.identifiant}</td>
+                  <td className={TD}>{r.evenement_redoute || r.scenario_operationnel}</td>
+                  <td className={TD}>
+                    <Badge value={r.gravite} map={GRAVITY} />
+                  </td>
+                  <td className={TD}>
+                    <Badge value={r.vraisemblance} map={LIKELIHOOD} />
+                  </td>
+                  <td className={TD}>
+                    <Badge value={r.niveau} map={LEVEL} />
+                  </td>
+                  <td className={TD}>
+                    <span className={TREATMENT[r.traitement] ?? ""}>{r.traitement}</span>
+                  </td>
+                  <td className={TD}>
+                    <Badge value={r.risque_residuel} map={LEVEL} />
+                  </td>
+                  <td className={TD}>
+                    <ul className="list-disc pl-4 text-slate-600">
+                      {r.mesures.map((m, i) => (
+                        <li key={i}>{m}</li>
+                      ))}
+                    </ul>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-      )}
+      </div>
       {output.plan_traitement && (
-        <div>
-          <p className="font-medium text-slate-700">Plan de traitement</p>
+        <div className="rounded border p-3">
+          <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            Plan de traitement
+          </p>
           <p className="text-slate-600">{output.plan_traitement}</p>
         </div>
       )}
