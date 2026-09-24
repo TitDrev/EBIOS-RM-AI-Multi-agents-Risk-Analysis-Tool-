@@ -201,156 +201,208 @@ _TRAITEMENT = {
 
 
 def to_excel(data: dict) -> bytes:
-    """Génère un classeur Excel : synthèse (matrices origine/résiduel) + plan de traitement + 1 onglet/atelier."""
-
-    def fill(cell, value: str | None, fills: dict) -> None:
-        if value in fills:
-            cell.fill = PatternFill("solid", fgColor=fills[value])
-
-    def level_fill(cell, value: str | None) -> None:
-        fill(cell, value, _LEVEL_FILL)
-
-    def cell_val(value: object) -> str:
-        if isinstance(value, list):
-            return "; ".join(str(v) for v in value)
-        return "" if value is None else str(value)
-
-    def section(ws, text: str) -> None:
-        ws.append([text])
-        for cell in ws[ws.max_row]:
-            cell.font = Font(bold=True, size=12)
-            cell.fill = PatternFill("solid", fgColor=_HEADER_FILL)
-
-    def kpi(ws, label: str, value: object) -> None:
-        ws.append([label, value])
+    """Génère un classeur Excel : entrées & contexte, 1 onglet/atelier en tableaux,
+    plan de traitement, puis synthèse finale (matrices origine/résiduel)."""
 
     from openpyxl import Workbook
-    from openpyxl.styles import Font, PatternFill
+    from openpyxl.styles import Alignment, Font, PatternFill
+
+    _HEADER = "4472C4"
+    _SECTION = "DDEBF7"
+    _GRAVITY = {"g1": "C6EFCE", "g2": "D9EAD3", "g3": "FFE699", "g4": "FFC7CE"}
+    _LIKELIHOOD = {"v1": "F2F2F2", "v2": "DDEBF7", "v3": "BDD7EE", "v4": "9DC3E6"}
+    _PERTINENCE = {"retenue": "C6EFCE", "a_suivre": "FFF2CC", "ecartee": "D9D9D9"}
+    _TRAITEMENT = {"reduire": "2E75B6", "transferer": "7030A0", "eviter": "808080", "accepter": "BF9000"}
+
+    def cell_val(v):
+        if v is None:
+            return ""
+        return "; ".join(str(x) for x in v) if isinstance(v, list) else str(v)
+
+    def section(ws, text):
+        ws.append([text])
+        for c in ws[ws.max_row]:
+            c.font = Font(bold=True, size=12, color="1F3864")
+            c.fill = PatternFill("solid", fgColor=_SECTION)
+
+    def table(ws, headers, rows, colored=None):
+        ws.append(headers)
+        for c in ws[ws.max_row]:
+            c.font = Font(bold=True, color="FFFFFF")
+            c.fill = PatternFill("solid", fgColor=_HEADER)
+        for r in rows:
+            ws.append([cell_val(v) for v in r])
+        for col_index, fillmap in (colored or {}).items():
+            for row in ws.iter_rows(min_row=2, max_row=ws.max_row, min_col=col_index, max_col=col_index):
+                cell = row[0]
+                if cell.value in fillmap:
+                    cell.fill = PatternFill("solid", fgColor=fillmap[cell.value])
+
+    def esthetics(ws):
+        ws.column_dimensions["A"].width = 14
+        for row in ws.iter_rows():
+            for c in row:
+                c.alignment = Alignment(wrap_text=True, vertical="top")
 
     wb = Workbook()
+    a = data.get("analyse", {})
 
-    # --- Synthèse ---
-    ws = wb.active
-    ws.title = "Synthèse"
+    # ---- 1) Entrées & contexte ----
+    ws_in = wb.active
+    ws_in.title = "Entrées & contexte"
+    section(ws_in, "Données d'entrée du SI")
+    table(ws_in, ["Champ", "Contenu"], [])
+    desc = a.get("description_si") or {}
+    for key, label in [("nom", "Nom"), ("ecosysteme", "Écosystème"), ("flux", "Flux de données"),
+                       ("contexte_metier", "Contexte métier"), ("contraintes", "Contraintes")]:
+        ws_in.append([label, cell_val(desc.get(key, ""))])
+    ws_in.column_dimensions["A"].width = 22
+    ws_in.column_dimensions["B"].width = 110
+    docs = desc.get("documents") or []
+    if docs:
+        ws_in.append([])
+        section(ws_in, "Documents fournis (intégrés à la base de connaissances)")
+        table(ws_in, ["Titre", "Extrait (200 caractères)"],
+              [[d.get("titre", ""), cell_val(d.get("contenu"))[:200]] for d in docs])
+    esthetics(ws_in)
+
+    # ---- 2) Un onglet par atelier (tableaux propres) ----
+    def atelier_sheets():
+        for atelier in data.get("ateliers", []):
+            numero = atelier.get("numero")
+            sortie = atelier.get("sortie", {}) or {}
+            ws = wb.create_sheet(f"Atelier {numero}")
+            if numero == 1:
+                section(ws, "Périmètre")
+                ws.append(["Périmètre", cell_val(sortie.get("perimetre"))])
+                ws.append([])
+                section(ws, "Biens essentiels")
+                table(ws, ["Nom", "Description"],
+                      [[b.get("name"), b.get("description")] for b in sortie.get("biens_essentiels", [])])
+                ws.append([])
+                section(ws, "Biens supports")
+                table(ws, ["Nom", "Description", "Supporte"],
+                      [[b.get("name"), b.get("description"), b.get("supports")] for b in sortie.get("biens_supports", [])])
+                ws.append([])
+                section(ws, "Événements redoutés")
+                table(ws, ["Bien essentiel", "Besoin", "Description", "Gravité"],
+                      [[e.get("bien_essentiel"), e.get("besoin"), e.get("label"), e.get("gravite")]
+                       for e in sortie.get("evenements_redoutes", [])],
+                      colored={4: _GRAVITY})
+                ws.append([])
+                section(ws, "Socle de sécurité")
+                table(ws, ["Mesure", "Référentiel", "Écart"],
+                      [[m.get("mesure"), m.get("referentiel"), m.get("ecart")]
+                       for m in sortie.get("socle_securite", [])])
+            elif numero == 2:
+                section(ws, "Sources de risques (couples SR/objectif visé)")
+                table(ws, ["Type", "Nom", "Objectif (OV)", "Motivation", "Activité", "Capacité", "Biens visés", "Pertinence"],
+                      [[s.get("type"), s.get("name"), s.get("objectif"), s.get("motivation"),
+                        s.get("activite"), s.get("capacite"), cell_val(s.get("biens_vises")), s.get("pertinence")]
+                       for s in sortie.get("sources_risques", [])],
+                      colored={6: _GRAVITY, 8: _PERTINENCE})
+            elif numero == 3:
+                pp = sortie.get("parties_prenantes", [])
+                if pp:
+                    section(ws, "Parties prenantes critiques")
+                    table(ws, ["Nom", "Rôle", "Motif de criticité"],
+                          [[p.get("name"), p.get("role"), p.get("motif_criticite")] for p in pp])
+                    ws.append([])
+                section(ws, "Scénarios stratégiques")
+                table(ws, ["ID", "Source", "Événement redouté", "Bien", "Gravité", "Vraisemblance", "Niveau", "Sources"],
+                      [[s.get("identifiant"), s.get("source_risque"), s.get("evenement_redoute"),
+                        s.get("bien_essentiel"), s.get("gravite"), s.get("vraisemblance"),
+                        s.get("niveau"), cell_val(s.get("sources"))]
+                       for s in sortie.get("scenarios_strategiques", [])],
+                      colored={5: _GRAVITY, 6: _LIKELIHOOD, 7: _LEVEL_FILL})
+            elif numero == 4:
+                section(ws, "Scénarios opérationnels")
+                table(ws, ["ID", "Stratégique", "Source", "Événement", "Gravité", "Vraisemblance",
+                           "Niveau", "Techniques", "Chemin d'attaque"],
+                      [[s.get("identifiant"), s.get("scenario_strategique"), s.get("source_risque"),
+                        s.get("evenement_redoute"), s.get("gravite"), s.get("vraisemblance"),
+                        s.get("niveau"), cell_val(s.get("techniques_attaque")),
+                        " -> ".join(s.get("chemin_attaque", []))]
+                       for s in sortie.get("scenarios_operationnels", [])],
+                      colored={5: _GRAVITY, 6: _LIKELIHOOD, 7: _LEVEL_FILL})
+            elif numero == 5:
+                section(ws, "Plan de traitement")
+                ws.append(["Synthèse", cell_val(sortie.get("plan_traitement"))])
+                ws.append([])
+                section(ws, "Registre des risques")
+                table(ws, ["ID", "Opérationnel", "Bien", "Événement", "Gravité", "Vraisemblance",
+                           "Niveau", "Traitement", "Mesures", "Résiduel", "Sources"],
+                      [[r.get("identifiant"), r.get("scenario_operationnel"), r.get("bien_essentiel"),
+                        r.get("evenement_redoute"), r.get("gravite"), r.get("vraisemblance"),
+                        r.get("niveau"), r.get("traitement"), cell_val(r.get("mesures")),
+                        r.get("risque_residuel"), cell_val(r.get("sources"))]
+                       for r in sortie.get("risques", [])],
+                      colored={5: _GRAVITY, 6: _LIKELIHOOD, 7: _LEVEL_FILL, 10: _LEVEL_FILL})
+            esthetics(ws)
+
+    atelier_sheets()
+
+    # ---- 3) Plan de traitement ----
+    ws2 = wb.create_sheet("Plan de traitement")
+    risks = data.get("registre_des_risques", [])
+    table(ws2, ["ID", "Bien", "Événement redouté", "Source", "Gravité", "Vraisemblance", "Niveau",
+                "Traitement", "Mesures", "Résiduel", "Justification"],
+          [[r.get("identifiant"), "", cell_val(r.get("justification")), "", r.get("gravite"),
+            r.get("vraisemblance"), r.get("niveau"), r.get("traitement"),
+            "; ".join(r.get("mesures", [])), r.get("risque_residuel"), cell_val(r.get("sources"))]
+           for r in risks],
+          colored={5: _GRAVITY, 6: _LIKELIHOOD, 7: _LEVEL_FILL, 10: _LEVEL_FILL})
+    widths = [10, 20, 36, 14, 10, 14, 10, 12, 60, 12, 40]
+    for i, w in enumerate(widths, start=1):
+        ws2.column_dimensions[chr(64 + i)].width = w
+    ws2.freeze_panes = "A2"
+
+    # ---- 4) Synthèse (en dernier) ----
+    ws = wb.create_sheet("Synthèse")
     ws.append(["Compte rendu EBIOS RM — Synthèse"])
     ws["A1"].font = Font(bold=True, size=14)
     ws.append([])
-    a = data.get("analyse", {})
-    kpi(ws, "Étude", a.get("nom", ""))
-    kpi(ws, "Statut", a.get("statut", ""))
-    kpi(ws, "Atelier courant", a.get("atelier_courant", ""))
+    for label, value in [("Étude", a.get("nom")), ("Statut", a.get("statut")), ("Atelier courant", a.get("atelier_courant"))]:
+        ws.append([label, value])
     ws.append([])
 
     section(ws, "Métriques")
-    kpi(ws, "Biens", len(data.get("biens", [])))
-    kpi(ws, "Événements redoutés", len(data.get("evenements_redoutes", [])))
-    kpi(ws, "Sources de risques", len(data.get("sources_de_risques", [])))
-    kpi(ws, "Scénarios stratégiques", len([s for s in data.get("scenarios", []) if s.get("kind") == "strategique"]))
-    kpi(ws, "Scénarios opérationnels", len([s for s in data.get("scenarios", []) if s.get("kind") == "operationnel"]))
-    kpi(ws, "Risques", len(data.get("registre_des_risques", [])))
+    ws.append(["Biens", len(data.get("biens", []))])
+    ws.append(["Événements redoutés", len(data.get("evenements_redoutes", []))])
+    ws.append(["Sources de risques", len(data.get("sources_de_risques", []))])
+    ws.append(["Scénarios stratégiques", len([s for s in data.get("scenarios", []) if s.get("kind") == "strategique"])])
+    ws.append(["Scénarios opérationnels", len([s for s in data.get("scenarios", []) if s.get("kind") == "operationnel"])])
+    ws.append(["Risques", len(risks)])
+    ws.append([])
 
-    # Matrice d'origine (comptage gravité × vraisemblance des risques)
-    risks = data.get("registre_des_risques", [])
-    counts = {f"g{i}": {f"v{j}": 0 for j in range(1, 5)} for i in range(1, 5)}
+    section(ws, "Matrice des risques d'origine (gravité x vraisemblance)")
+    counts = {g: {f"v{j}": 0 for j in range(1, 5)} for g in ("g1", "g2", "g3", "g4")}
     for r in risks:
         g = r.get("gravite") or "g1"
         v = r.get("vraisemblance") or "v1"
         counts.setdefault(g, {})
         counts[g][v] = counts[g].get(v, 0) + 1
-    ws.append([])
-    section(ws, "Matrice des risques d'origine (gravité × vraisemblance)")
-    ws.append(["", "V1", "V2", "V3", "V4"])
-    for col in ws[ws.max_row]:
-        col.font = Font(bold=True)
-    for g in ("g1", "g2", "g3", "g4"):
-        row = [g.upper()] + [counts[g][f"v{i}"] for i in range(1, 5)]
-        ws.append(row)
+    table(ws, ["", "V1", "V2", "V3", "V4"], [[g.upper()] + [counts[g][f"v{i}"] for i in range(1, 5)] for g in ("g1", "g2", "g3", "g4")])
     ws.append([])
 
-    # Synthèse des niveaux : origine vs résiduel
-    section(ws, "Comparaison origine ↔ résiduel (par niveau de risque)")
-    ws.append(["Niveau", "Risques d'origine", "Risques résiduels"])
-    for col in ws[ws.max_row]:
-        col.font = Font(bold=True)
+    section(ws, "Comparaison origine <- résiduel (par niveau)")
     levels = ["faible", "moyen", "eleve", "critique"]
     orig = {lv: 0 for lv in levels}
     resid = {lv: 0 for lv in levels}
     for r in risks:
         orig[r.get("niveau", "eleve")] = orig.get(r.get("niveau", "eleve"), 0) + 1
         resid[r.get("risque_residuel", "eleve")] = resid.get(r.get("risque_residuel", "eleve"), 0) + 1
-    for lv in levels:
-        rw = [lv, orig[lv], resid[lv]]
-        ws.append(rw)
-        for cell in ws[ws.max_row][:1]:
-            level_fill(cell, lv)
+    table(ws, ["Niveau", "Risques d'origine", "Risques résiduels"], [[lv, orig[lv], resid[lv]] for lv in levels],
+          colored={1: _LEVEL_FILL})
     ws.append([])
 
-    # Liste des risques retenus
     section(ws, "Risques retenus")
-    ws.append(["ID", "Événement redouté", "Niveau", "Traitement", "Résiduel"])
-    for col in ws[ws.max_row]:
-        col.font = Font(bold=True)
-    for r in risks:
-        rw = [r.get("identifiant"), cell_val(r.get("justification") or r.get("sources", "")),
-              r.get("niveau"), r.get("traitement"), r.get("risque_residuel")]
-        ws.append(rw)
-        level_fill(ws.cell(row=ws.max_row, column=3), r.get("niveau"))
-        level_fill(ws.cell(row=ws.max_row, column=5), r.get("risque_residuel"))
-    ws.append([])
-    ws.column_dimensions["A"].width = 34
-    ws.column_dimensions["B"].width = 60
-
-    # --- Plan de traitement ---
-    ws2 = wb.create_sheet("Plan de traitement")
-    header2 = ["ID", "Bien", "Événement redouté", "Source", "Gravité", "Vraisemblance", "Niveau",
-               "Traitement", "Mesures", "Résiduel", "Justification"]
-    ws2.append(header2)
-    for col in ws2[1]:
-        col.font = Font(bold=True, color="FFFFFF")
-        col.fill = PatternFill("solid", fgColor="4472C4")
-    for r in risks:
-        ws2.append([
-            r.get("identifiant"), "", cell_val(r.get("justification")), "",
-            r.get("gravite"), r.get("vraisemblance"), r.get("niveau"),
-            r.get("traitement"), "; ".join(r.get("mesures", [])), r.get("risque_residuel"),
-            cell_val(r.get("sources", "")),
-        ])
-        last = ws2.max_row
-        level_fill(ws2.cell(row=last, column=7), r.get("niveau"))
-        level_fill(ws2.cell(row=last, column=10), r.get("risque_residuel"))
-        fill(ws2.cell(row=last, column=8), r.get("traitement"), _TRAITEMENT)
-    widths = [10, 22, 34, 16, 10, 14, 10, 12, 60, 12, 40]
-    for i, w in enumerate(widths, start=1):
-        ws2.column_dimensions[chr(64 + i)].width = w
-    ws2.freeze_panes = "A2"
-
-    # --- Un onglet par atelier ---
-    for atelier in data.get("ateliers", []):
-        numero = atelier.get("numero", "?")
-        ws_n = wb.create_sheet(f"Atelier {numero}")
-        ws_n.append([f"Atelier {numero} — {atelier.get('statut', '')}"])
-        ws_n["A1"].font = Font(bold=True, size=13)
-        ws_n.append([])
-
-        def dump(d: dict, indent: str = "") -> None:
-            for k, v in d.items():
-                if k.startswith("_") or k == "documents":
-                    continue
-                if isinstance(v, dict):
-                    ws_n.append([f"{indent}{k} :"])
-                    dump(v, indent + "  ")
-                elif isinstance(v, list):
-                    ws_n.append([f"{indent}{k} :"])
-                    for item in v:
-                        if isinstance(item, dict):
-                            dump(item, indent + "  ")
-                        else:
-                            ws_n.append([f"{indent}  - {item}"])
-                else:
-                    ws_n.append([f"{indent}{k} : {v}"])
-
-        dump(atelier.get("sortie", {}))
-        ws_n.column_dimensions["A"].width = 100
+    table(ws, ["ID", "Événement redouté", "Niveau", "Traitement", "Résiduel"],
+          [[r.get("identifiant"), cell_val(r.get("justification") or r.get("sources", "")),
+            r.get("niveau"), r.get("traitement"), r.get("risque_residuel")] for r in risks],
+          colored={3: _LEVEL_FILL, 5: _LEVEL_FILL})
+    esthetics(ws)
+    ws.column_dimensions["B"].width = 90
 
     buffer = io.BytesIO()
     wb.save(buffer)
