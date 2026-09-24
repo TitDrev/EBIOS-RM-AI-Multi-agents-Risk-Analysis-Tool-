@@ -1,0 +1,7 @@
+{
+  "nom": "Boutique en ligne d'une PME (cas A)",
+  "ecosysteme": "Site marchand public (catalogue, panier, commande), plateforme de paiement externe (PSP) via redirection, back-office d'administration, base de données clients/commandes, hebergement cloud mutualise.",
+  "flux": "Le client navigue et passe commande ; le paiement est delegue au PSP (redirection) ; les commandes et donnees clients sont stockees en base ; le back-office accede aux donnees via l'application d'administration.",
+  "contexte_metier": "PME e-commerce (pret-a-porter), pic saisonnier (Black Friday, soldes), conformite RGPD sur les donnees clients, forte dependance a la disponibilite du site pendant les campagnes.",
+  "contraintes": "RGPD ; PSD2 pour le paiement ; exigences contractuelles de l'hebergeur ; budget SSI limite ; pas d'equipe SI dediee."
+}

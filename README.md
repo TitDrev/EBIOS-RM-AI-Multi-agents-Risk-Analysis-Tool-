@@ -124,6 +124,28 @@ LLM_MODEL=deepseek-v4-pro
 
 > Le mode `LLM_PROVIDER=mock` permet de tourner sans appel réseau (réponses déterministes pour les tests).
 
+### Démo en ligne de commande (recommandée)
+
+Une commande lance l'analyse complète à partir d'un dossier de livrables d'un SI :
+
+```bash
+cd backend
+python scripts/demo.py --si ../examples/si_boutique           # mode auto (recommandé)
+python scripts/demo.py --si ../examples/si_boutique --pas-a-pas  # validation/corrections interactives
+```
+
+Dossier SI attendu :
+
+```
+ma-etude/
+├── description.json      # si_description : nom, ecosysteme, flux, contexte_metier, contraintes
+└── documents/            # (optionnel) fichiers .md/.txt intégrés à la base de connaissances
+```
+
+Exemple fourni : [`examples/si_boutique/`](examples/si_boutique/). Sorties : `ma-etude/rapport/`
+(`compte_rendu.json`, `registre.csv`). Avec une clé LLM (`.env`), l'analyse est **réelle** ; avec
+`LLM_PROVIDER=mock`, une analyse de démonstration plausible est produite hors ligne.
+
 ---
 
 ## Structure du dépôt

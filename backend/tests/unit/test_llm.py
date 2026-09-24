@@ -7,17 +7,27 @@ from app.llm.mock import MockLLMProvider
 
 
 @pytest.mark.asyncio
-async def test_mock_provider_returns_fixed_response():
-    provider = MockLLMProvider(fixed_response='{"message": "ok"}')
+async def test_mock_provider_returns_structured_json():
+    provider = MockLLMProvider()
     resp = await provider.complete("system", "user")
-    assert resp.content == '{"message": "ok"}'
+    parsed = _extract_json(resp.content)
+    assert parsed is not None
+    assert "biens_essentiels" in parsed  # retour par défaut = sortie d'Atelier 1
+
+
+@pytest.mark.asyncio
+async def test_mock_provider_selects_by_atelier():
+    provider = MockLLMProvider()
+    resp = await provider.complete("ATELIER 5 « Traitement du risque »", "user")
+    assert "risques" in _extract_json(resp.content)
 
 
 @pytest.mark.asyncio
 async def test_mock_provider_json_mode():
-    provider = MockLLMProvider(fixed_response='{"a": 1}')
-    result = await provider.complete_json("system", "user")
-    assert result == {"a": 1}
+    provider = MockLLMProvider()
+    result = await provider.complete_json("ATELIER 2", "user")
+    assert result is not None
+    assert "sources_risques" in result
 
 
 def test_extract_json_plain():

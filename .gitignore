@@ -32,3 +32,4 @@ frontend/build/
 # Data
 *.db
 *.sqlite3
+examples/*/rapport/
