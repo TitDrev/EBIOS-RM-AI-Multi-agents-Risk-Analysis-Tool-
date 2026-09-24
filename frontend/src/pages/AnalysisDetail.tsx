@@ -15,6 +15,7 @@ export default function AnalysisDetail() {
   const { id } = useParams();
   const [analysis, setAnalysis] = useState<Analysis | null>(null);
   const [workshops, setWorkshops] = useState<Workshop[]>([]);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   async function load() {
     const [a, w] = await Promise.all([
@@ -42,13 +43,31 @@ export default function AnalysisDetail() {
   }, [id]);
 
   async function start() {
-    await api.post(`/analyses/${id}/start`);
-    load();
+    setActionError(null);
+    try {
+      await api.post(`/analyses/${id}/start`);
+    } catch (err) {
+      const e = err as { response?: { data?: { detail?: unknown } } };
+      const detail = e.response?.data?.detail;
+      console.error("Echec du démarrage :", err);
+      setActionError(typeof detail === "string" ? detail : `Démarrage échoué${detail ? ` : ${JSON.stringify(detail)}` : ""}`);
+    } finally {
+      await load();
+    }
   }
 
   async function validate(numero: number) {
-    await api.post(`/analyses/${id}/workshops/${numero}/validate`, { corrections: [] });
-    load();
+    setActionError(null);
+    try {
+      await api.post(`/analyses/${id}/workshops/${numero}/validate`, { corrections: [] });
+    } catch (err) {
+      const e = err as { response?: { data?: { detail?: unknown } } };
+      const detail = e.response?.data?.detail;
+      console.error("Echec de la validation :", err);
+      setActionError(typeof detail === "string" ? detail : `Validation échouée${detail ? ` : ${JSON.stringify(detail)}` : ""}`);
+    } finally {
+      await load();
+    }
   }
 
   async function downloadReport(format: "csv" | "json" | "pdf") {
@@ -107,6 +126,12 @@ export default function AnalysisDetail() {
           )}
         </div>
       </div>
+
+      {actionError && (
+        <p className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
+          {actionError}
+        </p>
+      )}
 
       {workshops.length === 0 && <p className="text-slate-500">Aucun atelier lancé.</p>}
 
