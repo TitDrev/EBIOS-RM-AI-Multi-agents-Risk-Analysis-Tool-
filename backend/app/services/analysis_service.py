@@ -141,6 +141,10 @@ async def run_workshop(
     }
 
     agent_name = AGENT_BY_WORKSHOP[numero]
+    await manager.broadcast(str(analysis.id), {"type": "workshop_running", "numero": numero})
+    await manager.broadcast(
+        str(analysis.id), {"type": "workshop_progress", "numero": numero, "pct": 5, "phase": "préparation"}
+    )
     try:
         output = await WORKSHOP_FUNCTIONS[numero](state)
     except Exception as exc:
@@ -200,6 +204,10 @@ async def run_workshop(
     analysis.status = AnalysisStatus.AWAITING_VALIDATION
     await session.commit()
     await session.refresh(workshop)
+    await manager.broadcast(
+        str(analysis.id),
+        {"type": "workshop_progress", "numero": numero, "pct": 100, "phase": "sortie validée"},
+    )
     await manager.broadcast(
         str(analysis.id),
         {

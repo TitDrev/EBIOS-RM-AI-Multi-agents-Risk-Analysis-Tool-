@@ -14,7 +14,8 @@ async def run_workshop_4(state: AnalysisState) -> dict:
     catalog = all_techniques()
     user_prompt = build_workshop4_prompt(state, catalog)
     model, tokens_in, tokens_out = await run_json_workshop(
-        WORKSHOP4_SYSTEM + SECURITY_GUARD, user_prompt, ScenariosOperationnelsOutput
+        WORKSHOP4_SYSTEM + SECURITY_GUARD, user_prompt, ScenariosOperationnelsOutput,
+        analysis_id=state.get("analysis_id"),
     )
 
     scenarios = []

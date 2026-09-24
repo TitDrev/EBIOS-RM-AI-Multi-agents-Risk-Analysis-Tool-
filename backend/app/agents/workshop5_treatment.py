@@ -12,7 +12,8 @@ async def run_workshop_5(state: AnalysisState) -> dict:
     """Exécute l'Atelier 5 et construit le registre des risques + plan de traitement."""
     user_prompt = build_workshop5_prompt(state)
     model, tokens_in, tokens_out = await run_json_workshop(
-        WORKSHOP5_SYSTEM + SECURITY_GUARD, user_prompt, TraitementOutput
+        WORKSHOP5_SYSTEM + SECURITY_GUARD, user_prompt, TraitementOutput,
+        analysis_id=state.get("analysis_id"),
     )
 
     risques = []

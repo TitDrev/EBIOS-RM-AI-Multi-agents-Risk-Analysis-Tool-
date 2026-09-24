@@ -54,7 +54,7 @@ MOCK_WORKSHOP3_JSON = """
   "scenarios_strategiques": [
     {"identifiant": "S-01", "source_risque": "Pirate",
      "evenement_redoute": "Fuite de données clients", "bien_essentiel": "Données clients",
-     "gravite": "g3", "sources": ["EBIOS RM"]}
+     "gravite": "g3", "vraisemblance": "v2", "sources": ["EBIOS RM"]}
   ]
 }
 """

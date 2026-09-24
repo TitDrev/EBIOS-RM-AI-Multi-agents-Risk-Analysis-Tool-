@@ -11,7 +11,8 @@ async def run_workshop_2(state: AnalysisState) -> dict:
     """Exécute l'Atelier 2 et retourne la liste des sources de risques (SR/OV)."""
     user_prompt = build_workshop2_prompt(state)
     model, tokens_in, tokens_out = await run_json_workshop(
-        WORKSHOP2_SYSTEM + SECURITY_GUARD, user_prompt, SourcesRisquesOutput
+        WORKSHOP2_SYSTEM + SECURITY_GUARD, user_prompt, SourcesRisquesOutput,
+        analysis_id=state.get("analysis_id"),
     )
     data = model.model_dump(mode="json")
     data["_llm"] = {"tokens_in": tokens_in, "tokens_out": tokens_out}

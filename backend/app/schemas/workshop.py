@@ -109,6 +109,7 @@ class ScenarioStrategique(BaseModel):
     evenement_redoute: str
     bien_essentiel: str = ""
     gravite: NormalizedGravity
+    vraisemblance: NormalizedLikelihood
     sources: list[str] = []
 
 

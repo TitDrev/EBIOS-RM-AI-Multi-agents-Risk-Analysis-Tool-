@@ -93,8 +93,10 @@ async def test_create_start_validate_flow(client, mock_llm):
     strategiques = [s for s in resp.json() if s["kind"] == "strategique"]
     operationnels = [s for s in resp.json() if s["kind"] == "operationnel"]
     assert strategiques
-    # L'atelier 3 cote la gravité uniquement (la vraisemblance arrive à l'atelier 4)
+    # L'atelier 3 estime gravité + vraisemblance initiale et calcule le niveau
     assert strategiques[0]["gravite"] == "g3"
+    assert strategiques[0]["vraisemblance"] == "v2"
+    assert strategiques[0]["niveau"] == "eleve"
     assert operationnels
     assert operationnels[0]["identifiant"] == "O-01"
     assert operationnels[0]["niveau"] == "critique"
@@ -143,6 +145,16 @@ async def test_create_start_validate_flow(client, mock_llm):
     assert resp.status_code == 200
     assert "identifiant" in resp.text
     assert "R-01" in resp.text
+
+    # Compte rendu Excel (onglet synthèse + plan de traitement + 5 ateliers)
+    resp = await client.post(
+        f"/api/analyses/{analysis_id}/report?format=xlsx", headers=headers
+    )
+    assert resp.status_code == 200
+    assert resp.headers["content-type"].startswith(
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+    assert len(resp.content) > 2000
 
 
 @pytest.mark.asyncio

@@ -119,9 +119,11 @@ construire les scénarios stratégiques, COTÉS EN GRAVITÉ SEULEMENT (G1 à G4)
    - "evenement_redoute" : libellé d'un événement redouté de l'Atelier 1 ;
    - "bien_essentiel" : le bien essentiel concerné ;
    - "gravite" : G1 à G4, cohérente avec la gravité de l'événement redouté ;
+   - "vraisemblance" : estimation INITIALE V1 à V4 (elle sera affinée à l'Atelier 4) ;
    - "sources" : les références justifiant le scénario.
 
-La vraisemblance n'est PAS évaluée ici (elle le sera à l'Atelier 4).
+La vraisemblance est estimée ici de façon préliminaire, puis réévaluée et affinée à
+l'Atelier 4 (au vu du chemin d'attaque et du socle existant).
 
 RÈGLES STRICTES :
 1. Réponds UNIQUEMENT en JSON, sans texte autour.
@@ -136,7 +138,8 @@ FORMAT JSON ATTENDU :
   ],
   "scenarios_strategiques": [
     {"identifiant": "S-01", "source_risque": "string", "evenement_redoute": "string",
-     "bien_essentiel": "string", "gravite": "g1|g2|g3|g4", "sources": ["string"]}
+     "bien_essentiel": "string", "gravite": "g1|g2|g3|g4",
+     "vraisemblance": "v1|v2|v3|v4", "sources": ["string"]}
   ]
 }
 """

@@ -15,7 +15,7 @@ from app.services import report_generator
 
 router = APIRouter(prefix="/analyses/{analysis_id}/report", tags=["reports"])
 
-ReportFormat = Literal["json", "csv", "pdf"]
+ReportFormat = Literal["json", "csv", "pdf", "xlsx"]
 
 
 @router.post("")
@@ -39,6 +39,16 @@ async def generate_report(
             content=csv_text,
             media_type="text/csv; charset=utf-8",
             headers={"Content-Disposition": f'attachment; filename="registre_{analysis_id}.csv"'},
+        )
+
+    if format == "xlsx":
+        xlsx_bytes = await asyncio.to_thread(report_generator.to_excel, data)
+        return Response(
+            content=xlsx_bytes,
+            media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            headers={
+                "Content-Disposition": f'attachment; filename="compte_rendu_{analysis_id}.xlsx"'
+            },
         )
 
     # PDF : exécution dans un thread (WeasyPrint est synchrone et coûteux).
