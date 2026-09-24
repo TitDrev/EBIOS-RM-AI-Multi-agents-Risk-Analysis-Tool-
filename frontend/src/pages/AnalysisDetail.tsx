@@ -30,6 +30,17 @@ export default function AnalysisDetail() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
+  // Suivi temps réel via WebSocket → rechargement à chaque événement.
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) return;
+    const proto = window.location.protocol === "https:" ? "wss" : "ws";
+    const ws = new WebSocket(`${proto}://${window.location.host}/ws/analyses/${id}?token=${token}`);
+    ws.onmessage = () => load();
+    return () => ws.close();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
+
   async function start() {
     await api.post(`/analyses/${id}/start`);
     load();
@@ -61,6 +72,12 @@ export default function AnalysisDetail() {
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold">{analysis.name}</h2>
         <div className="flex gap-2">
+          {analysis.status === "in_progress" || analysis.status === "awaiting_validation" ? (
+            <span className="flex items-center gap-1 text-sm text-slate-500">
+              <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-green-500" />
+              en direct
+            </span>
+          ) : null}
           {analysis.current_workshop === 0 && (
             <button className="rounded bg-slate-900 px-3 py-2 text-white" onClick={start}>
               Démarrer l'analyse

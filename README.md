@@ -17,6 +17,8 @@ Application web multi-agents pour l'analyse de risques des systèmes d'informati
   5. Traitement du risque (stratégies réduire/transférer/éviter/accepter, mesures, risque résiduel → **registre des risques**)
 - **Échelles EBIOS RM** : gravité **G1→G4**, vraisemblance **V1→V4**, matrice 4×4 → niveau faible/moyen/élevé/critique calculé de façon **déterministe dans le code**
 - **Validation humaine entre chaque atelier** : valider, **corriger** (reprise ciblée avec corrections) ou **relancer** un atelier
+- **Suivi temps réel** via WebSocket (`/ws/analyses/{id}`) : événements atelier lancé / validé / étude terminée
+- **Comparaison d'études** (`/api/analyses/compare`) : métriques et registres entre deux analyses
 - **Compte rendu final** : registre des risques argumenté + plan de traitement (JSON/CSV/PDF)
 - **Multi-agents** : un agent par atelier, orchestrés par LangGraph, consignes versionnées (v1.1)
 - **RAG** : base de connaissances (EBIOS RM, ISO 27005, ISO 27002, ANSSI)
@@ -145,6 +147,8 @@ sprint.md
 | GET | `/api/analyses/{id}/scenarios` | Scénarios stratégiques & opérationnels |
 | GET | `/api/analyses/{id}/risks` | Registre des risques |
 | POST | `/api/analyses/{id}/report?format=json\|csv\|pdf` | Compte rendu final |
+| GET | `/ws/analyses/{id}` | WebSocket de suivi temps réel (token en query) |
+| POST | `/api/analyses/compare` | Comparer deux études |
 
 ---
 
@@ -191,7 +195,7 @@ Transparence exigée par le cadre du projet (item 7 de la liste de contrôle) :
 - [x] Sprint 3 — Ateliers 2 & 3 (sources de risques, scénarios stratégiques) + RAG
 - [x] Sprint 4 — Atelier 4 (scénarios opérationnels, MITRE ATT&CK) + outils
 - [x] Sprint 5 — Atelier 5 (traitement du risque) + registre + compte rendu (JSON/CSV/PDF)
-- [ ] Sprint 6 — WebSocket de suivi en temps réel du pipeline + comparaison d'études
+- [x] Sprint 6 — WebSocket de suivi en temps réel + comparaison d'études
 - [ ] Sprint 7 — Cas de référence (A/B/C), dossier écrit, audit, déploiement
 
 > Les reprises ciblées (corriger/relancer un atelier) sont d'ores et déjà disponibles via

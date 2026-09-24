@@ -216,3 +216,29 @@ async def test_cannot_access_other_user_analysis(client, mock_llm):
 
     resp = await client.get("/api/analyses", headers=other_headers)
     assert all(a["id"] != analysis_id for a in resp.json())
+
+
+@pytest.mark.asyncio
+async def test_compare_two_analyses(client, mock_llm):
+    token = await _register_and_token(client)
+    headers = {"Authorization": f"Bearer {token}"}
+
+    r1 = await client.post(
+        "/api/analyses", json={"name": "étude 1", "si_description": {"nom": "s1"}}, headers=headers
+    )
+    a1 = r1.json()["id"]
+    r2 = await client.post(
+        "/api/analyses", json={"name": "étude 2", "si_description": {"nom": "s2"}}, headers=headers
+    )
+    a2 = r2.json()["id"]
+
+    resp = await client.post(
+        "/api/analyses/compare",
+        json={"etude_a": a1, "etude_b": a2},
+        headers=headers,
+    )
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+    assert body["etude_a"]["nom"] == "étude 1"
+    assert body["etude_b"]["nom"] == "étude 2"
+    assert "differences" in body

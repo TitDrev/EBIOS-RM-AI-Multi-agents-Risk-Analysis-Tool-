@@ -12,6 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.agents.graph import WORKSHOP_FUNCTIONS
 from app.agents.prompts import WORKSHOP_PROMPTS
 from app.agents.state import AnalysisState
+from app.live import manager
 from app.models.agent_run import AgentRun
 from app.models.analysis import Analysis
 from app.models.asset import Asset
@@ -199,6 +200,15 @@ async def run_workshop(
     analysis.status = AnalysisStatus.AWAITING_VALIDATION
     await session.commit()
     await session.refresh(workshop)
+    await manager.broadcast(
+        str(analysis.id),
+        {
+            "type": "workshop_updated",
+            "numero": numero,
+            "status": WorkshopStatus.AWAITING_VALIDATION,
+            "output": output,
+        },
+    )
     return workshop
 
 
@@ -355,10 +365,14 @@ async def validate_workshop(
     workshop.validated_at = _now()
     await session.commit()
     await session.refresh(workshop)
+    await manager.broadcast(
+        str(analysis.id), {"type": "workshop_validated", "numero": numero}
+    )
 
     if numero >= 5:
         analysis.status = AnalysisStatus.COMPLETED
         await session.commit()
+        await manager.broadcast(str(analysis.id), {"type": "analysis_completed"})
         return workshop
 
     return await run_workshop(session, analysis, numero + 1)
