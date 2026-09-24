@@ -205,7 +205,8 @@ def to_excel(data: dict) -> bytes:
     plan de traitement, puis synthèse finale (matrices origine/résiduel)."""
 
     from openpyxl import Workbook
-    from openpyxl.styles import Alignment, Font, PatternFill
+    from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+    from openpyxl.utils import get_column_letter
 
     _HEADER = "4472C4"
     _SECTION = "DDEBF7"
@@ -238,11 +239,56 @@ def to_excel(data: dict) -> bytes:
                 if cell.value in fillmap:
                     cell.fill = PatternFill("solid", fgColor=fillmap[cell.value])
 
-    def esthetics(ws):
-        ws.column_dimensions["A"].width = 14
-        for row in ws.iter_rows():
-            for c in row:
-                c.alignment = Alignment(wrap_text=True, vertical="top")
+    def finish(ws, overrides=None):
+        """Bordures visibles, texte centré verticalement (enveloppé), largeurs et
+        hauteurs de lignes adaptées au contenu."""
+        import math as _math
+
+        overrides = overrides or {}
+        thin = Side(style="thin", color="9CA3AF")
+
+        # Largeurs : sur mesure par colonne, plafonnées, en tenant compte des surcharges.
+        widths: dict[str, int] = {}
+        for col in range(1, ws.max_column + 1):
+            letter = get_column_letter(col)
+            if letter in overrides:
+                widths[letter] = int(overrides[letter])
+                continue
+            lens = [
+                len(str(c.value))
+                for row in ws.iter_rows(min_col=col, max_col=col)
+                for c in row
+                if c.value is not None and not isinstance(c.value, (int, float))
+            ]
+            num = max(lens) if lens else 0
+            widths[letter] = max(10, min(num + 2, 55))
+        for letter, w in widths.items():
+            ws.column_dimensions[letter].width = w
+
+        # Hauteurs de lignes estimées (texte enroulé) + bordures + alignement.
+        for r in range(1, ws.max_row + 1):
+            row_has_value = any(
+                ws.cell(row=r, column=col).value is not None
+                for col in range(1, ws.max_column + 1)
+            )
+            if not row_has_value:
+                continue
+            max_lines = 1
+            for col in range(1, ws.max_column + 1):
+                cell = ws.cell(row=r, column=col)
+                letter = get_column_letter(col)
+                cell.border = Border(left=thin, right=thin, top=thin, bottom=thin)
+                if cell.value is not None:
+                    cell.alignment = Alignment(
+                        vertical="center",
+                        horizontal="center" if r == 1 else "left",
+                        wrap_text=True,
+                    )
+                    if isinstance(cell.value, str) and cell.value:
+                        wcol = max(2, widths.get(letter, 12) - 3)
+                        lines = _math.ceil(len(cell.value) / wcol)
+                        max_lines = max(max_lines, lines)
+            ws.row_dimensions[r].height = max(18, max_lines * 14 + 6)
 
     wb = Workbook()
     a = data.get("analyse", {})
@@ -256,15 +302,13 @@ def to_excel(data: dict) -> bytes:
     for key, label in [("nom", "Nom"), ("ecosysteme", "Écosystème"), ("flux", "Flux de données"),
                        ("contexte_metier", "Contexte métier"), ("contraintes", "Contraintes")]:
         ws_in.append([label, cell_val(desc.get(key, ""))])
-    ws_in.column_dimensions["A"].width = 22
-    ws_in.column_dimensions["B"].width = 110
     docs = desc.get("documents") or []
     if docs:
         ws_in.append([])
         section(ws_in, "Documents fournis (intégrés à la base de connaissances)")
         table(ws_in, ["Titre", "Extrait (200 caractères)"],
               [[d.get("titre", ""), cell_val(d.get("contenu"))[:200]] for d in docs])
-    esthetics(ws_in)
+    finish(ws_in, overrides={"A": 24, "B": 90})
 
     # ---- 2) Un onglet par atelier (tableaux propres) ----
     def atelier_sheets():
@@ -338,7 +382,7 @@ def to_excel(data: dict) -> bytes:
                         r.get("risque_residuel"), cell_val(r.get("sources"))]
                        for r in sortie.get("risques", [])],
                       colored={5: _GRAVITY, 6: _LIKELIHOOD, 7: _LEVEL_FILL, 10: _LEVEL_FILL})
-            esthetics(ws)
+            finish(ws)
 
     atelier_sheets()
 
@@ -352,9 +396,10 @@ def to_excel(data: dict) -> bytes:
             "; ".join(r.get("mesures", [])), r.get("risque_residuel"), cell_val(r.get("sources"))]
            for r in risks],
           colored={5: _GRAVITY, 6: _LIKELIHOOD, 7: _LEVEL_FILL, 10: _LEVEL_FILL})
-    widths = [10, 20, 36, 14, 10, 14, 10, 12, 60, 12, 40]
-    for i, w in enumerate(widths, start=1):
-        ws2.column_dimensions[chr(64 + i)].width = w
+    finish(ws2, overrides={
+        "A": 10, "B": 24, "C": 40, "D": 16, "E": 10, "F": 14,
+        "G": 10, "H": 14, "I": 70, "J": 12, "K": 44,
+    })
     ws2.freeze_panes = "A2"
 
     # ---- 4) Synthèse (en dernier) ----
@@ -401,8 +446,7 @@ def to_excel(data: dict) -> bytes:
           [[r.get("identifiant"), cell_val(r.get("justification") or r.get("sources", "")),
             r.get("niveau"), r.get("traitement"), r.get("risque_residuel")] for r in risks],
           colored={3: _LEVEL_FILL, 5: _LEVEL_FILL})
-    esthetics(ws)
-    ws.column_dimensions["B"].width = 90
+    finish(ws, overrides={"A": 22, "B": 90})
 
     buffer = io.BytesIO()
     wb.save(buffer)
