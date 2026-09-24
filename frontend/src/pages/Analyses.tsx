@@ -51,8 +51,14 @@ export default function Analyses() {
       setUploadName("");
       load();
     } catch (err) {
-      const detail = (err as { response?: { data?: { detail?: string } } }).response?.data?.detail;
-      setUploadError(detail ?? "Impossible d'importer le document.");
+      const e = err as { response?: { status?: number; data?: unknown } };
+      const status = e.response?.status ?? "réseau";
+      const detail = (e.response?.data as { detail?: unknown } | undefined)?.detail;
+      setUploadError(
+        typeof detail === "string"
+          ? detail
+          : `Import impossible (HTTP ${status})${detail ? ` : ${JSON.stringify(detail)}` : ""}. Réessaie avec le backend relancé.`,
+      );
     }
   }
 
