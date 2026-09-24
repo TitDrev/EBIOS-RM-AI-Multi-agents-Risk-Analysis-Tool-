@@ -7,6 +7,7 @@ import type {
   ScenarioOperationnel,
   ScenarioStrategique,
   SourceRisque,
+  TraitementOutput,
   Workshop,
 } from "../types";
 
@@ -39,17 +40,55 @@ export default function AnalysisDetail() {
     load();
   }
 
+  async function downloadReport(format: "csv" | "json" | "pdf") {
+    const resp = await api.post(`/analyses/${id}/report?format=${format}`, undefined, {
+      responseType: "blob",
+    });
+    const url = URL.createObjectURL(resp.data);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `compte_rendu.${format === "json" ? "json" : format}`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+  }
+
   if (!analysis) return <p>Chargement…</p>;
+
+  const completed = analysis.status === "completed";
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-lg font-semibold">{analysis.name}</h2>
-        {analysis.current_workshop === 0 && (
-          <button className="rounded bg-slate-900 px-3 py-2 text-white" onClick={start}>
-            Démarrer l'analyse
-          </button>
-        )}
+        <div className="flex gap-2">
+          {analysis.current_workshop === 0 && (
+            <button className="rounded bg-slate-900 px-3 py-2 text-white" onClick={start}>
+              Démarrer l'analyse
+            </button>
+          )}
+          {completed && (
+            <>
+              <button
+                className="rounded bg-slate-100 px-3 py-2 text-sm"
+                onClick={() => downloadReport("json")}
+              >
+                Compte rendu JSON
+              </button>
+              <button
+                className="rounded bg-slate-100 px-3 py-2 text-sm"
+                onClick={() => downloadReport("csv")}
+              >
+                Registre CSV
+              </button>
+              <button
+                className="rounded bg-slate-100 px-3 py-2 text-sm"
+                onClick={() => downloadReport("pdf")}
+              >
+                PDF
+              </button>
+            </>
+          )}
+        </div>
       </div>
 
       {workshops.length === 0 && <p className="text-slate-500">Aucun atelier lancé.</p>}
@@ -75,6 +114,7 @@ function WorkshopCard({ workshop, onValidate }: { workshop: Workshop; onValidate
       {workshop.numero === 2 && <SourcesRisques sources={(workshop.output as { sources_risques?: SourceRisque[] }).sources_risques ?? []} />}
       {workshop.numero === 3 && <Scenarios scenarios={(workshop.output as { scenarios_strategiques?: ScenarioStrategique[] }).scenarios_strategiques ?? []} />}
       {workshop.numero === 4 && <ScenariosOperationnels scenarios={(workshop.output as { scenarios_operationnels?: ScenarioOperationnel[] }).scenarios_operationnels ?? []} />}
+      {workshop.numero === 5 && <Traitement output={workshop.output as TraitementOutput} />}
 
       {awaiting && (
         <button className="mt-3 rounded bg-green-700 px-3 py-2 text-white" onClick={onValidate}>
@@ -188,6 +228,50 @@ function ScenariosOperationnels({ scenarios }: { scenarios: ScenarioOperationnel
           </ol>
         </div>
       ))}
+    </div>
+  );
+}
+
+function Traitement({ output }: { output: TraitementOutput }) {
+  const risques = output.risques ?? [];
+  return (
+    <div className="space-y-3 text-sm">
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse">
+          <thead>
+            <tr className="border-b text-left">
+              <th className="py-1 pr-2">ID</th>
+              <th className="py-1 pr-2">Niveau</th>
+              <th className="py-1 pr-2">Traitement</th>
+              <th className="py-1 pr-2">Risque résiduel</th>
+              <th className="py-1">Mesures</th>
+            </tr>
+          </thead>
+          <tbody>
+            {risques.map((r) => (
+              <tr key={r.identifiant} className="border-b align-top">
+                <td className="py-1 pr-2">{r.identifiant}</td>
+                <td className="py-1 pr-2">{r.niveau}</td>
+                <td className="py-1 pr-2">{r.traitement}</td>
+                <td className="py-1 pr-2">{r.risque_residuel}</td>
+                <td className="py-1">
+                  <ul className="list-disc pl-4">
+                    {r.mesures.map((m, i) => (
+                      <li key={i}>{m}</li>
+                    ))}
+                  </ul>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {output.plan_traitement && (
+        <div>
+          <p className="font-medium">Plan de traitement</p>
+          <p className="text-slate-600">{output.plan_traitement}</p>
+        </div>
+      )}
     </div>
   );
 }

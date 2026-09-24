@@ -15,6 +15,7 @@ from app.models.analysis import Analysis
 from app.models.asset import Asset
 from app.models.enums import AgentRunStatus, AnalysisStatus, AssetKind, ScenarioKind, WorkshopStatus
 from app.models.feared_event import FearedEvent
+from app.models.risk import Risk
 from app.models.risk_source import RiskSource
 from app.models.scenario import Scenario
 from app.models.workshop import Workshop
@@ -32,6 +33,7 @@ KNOWLEDGE_QUERIES = {
     2: "typologie et caractérisation des sources de risques EBIOS RM",
     3: "scénarios stratégiques gravité vraisemblance appréciation du risque EBIOS RM",
     4: "scénarios opérationnels chemin d'attaque techniques MITRE ATT&CK",
+    5: "traitement du risque stratégies mesures de sécurité ISO 27002 ANSSI EBIOS RM",
 }
 
 
@@ -97,6 +99,8 @@ async def run_workshop(session: AsyncSession, analysis: Analysis, numero: int) -
         await _persist_scenarios(session, analysis.id, output)
     elif numero == 4:
         await _persist_operational_scenarios(session, analysis.id, output)
+    elif numero == 5:
+        await _persist_risks(session, analysis.id, output)
 
     analysis.current_workshop = numero
     analysis.status = AnalysisStatus.AWAITING_VALIDATION
@@ -204,6 +208,35 @@ async def _persist_operational_scenarios(
                 niveau=scenario.get("niveau"),
                 description=" → ".join(steps) if steps else ref,
                 detail=scenario,
+            )
+        )
+
+
+async def _persist_risks(session: AsyncSession, analysis_id: uuid.UUID, output: dict) -> None:
+    """Matérialise le registre des risques issus de l'Atelier 5."""
+    rows = await session.scalars(
+        select(Scenario).where(
+            Scenario.analysis_id == analysis_id, Scenario.kind == ScenarioKind.OPERATIONNEL
+        )
+    )
+    scenario_ids = {s.identifiant: s.id for s in rows if s.identifiant}
+
+    for risque in output.get("risques", []):
+        session.add(
+            Risk(
+                analysis_id=analysis_id,
+                scenario_id=scenario_ids.get(risque.get("scenario_operationnel", "")),
+                identifiant=risque.get("identifiant"),
+                gravite=risque.get("gravite"),
+                vraisemblance=risque.get("vraisemblance"),
+                niveau=risque.get("niveau"),
+                traitement=risque.get("traitement"),
+                mesures=risque.get("mesures", []),
+                risque_residuel=risque.get("risque_residuel"),
+                sources=risque.get("sources", []),
+                justification=risque.get("justification"),
+                valide_par=risque.get("valide_par"),
+                extra=risque,
             )
         )
 

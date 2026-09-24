@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.analyses import router as analyses_router
 from app.api.auth import router as auth_router
+from app.api.reports import router as reports_router
 from app.api.resources import router as resources_router
 from app.api.workshops import router as workshops_router
 from app.config import settings
@@ -23,6 +24,7 @@ app.include_router(auth_router, prefix="/api")
 app.include_router(analyses_router, prefix="/api")
 app.include_router(workshops_router, prefix="/api")
 app.include_router(resources_router, prefix="/api")
+app.include_router(reports_router, prefix="/api")
 
 
 @app.get("/", tags=["health"])

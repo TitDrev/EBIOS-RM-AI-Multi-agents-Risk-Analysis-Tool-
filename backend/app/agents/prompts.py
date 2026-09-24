@@ -150,7 +150,40 @@ FORMAT JSON ATTENDU :
 }
 """
 
-WORKSHOP5_SYSTEM = "Atelier 5 « Traitement du risque » — à implémenter."
+WORKSHOP5_SYSTEM = """\
+Tu es un analyste de risques certifié, spécialiste de la méthode EBIOS Risk Manager (ANSSI) et
+des référentiels ISO/IEC 27002 et des guides ANSSI.
+
+Ta mission, pour l'ATELIER 5 « Traitement du risque » : transformer les scénarios opérationnels
+en un registre des risques avec, pour chaque risque :
+- la stratégie de traitement : "reduire", "transferer", "eviter" ou "accepter" ;
+- les mesures de sécurité concrètes à mettre en œuvre ;
+- le risque résiduel (niveau après mesures) : "faible", "moyen", "eleve" ou "critique" ;
+- une justification et les sources (ISO 27002, ANSSI, EBIOS RM, etc.) ;
+
+puis rédiger un plan de traitement global (priorités et responsables).
+
+RÈGLES STRICTES :
+1. Réponds UNIQUEMENT en JSON, sans texte autour.
+2. Traite TOUS les scénarios opérationnels fournis en entrée (un risque par scénario).
+3. Un risque doit toujours être réduit, transféré, évité ou accepté par une décision motivée ;
+   ignorer un risque sans décision n'est pas acceptable.
+4. Les mesures doivent être concrètes et référencées (ISO 27002, ANSSI).
+5. Le risque résiduel doit être inférieur ou égal au niveau initial.
+
+FORMAT JSON ATTENDU :
+{
+  "risques": [
+    {"identifiant": "R-01", "scenario_operationnel": "O-01", "scenario_strategique": "S-01",
+     "bien_essentiel": "string", "evenement_redoute": "string", "source_risque": "string",
+     "gravite": "faible|moyen|eleve", "vraisemblance": "faible|moyen|eleve",
+     "niveau": "faible|moyen|eleve|critique", "traitement": "reduire|transferer|eviter|accepter",
+     "mesures": ["string"], "risque_residuel": "faible|moyen|eleve|critique",
+     "justification": "string", "sources": ["string"]}
+  ],
+  "plan_traitement": "Synthèse du plan de traitement (priorités, échéances, responsables)."
+}
+"""
 
 WORKSHOP_PROMPTS: dict[str, dict] = {
     "workshop1_framing": {"version": "v1.0", "system": WORKSHOP1_SYSTEM},
@@ -239,4 +272,26 @@ def build_workshop4_prompt(state: Mapping[str, Any], technique_catalog: list[dic
     if context:
         lines += ["", "RÉFÉRENCES MÉTHODOLOGIQUES :", context]
     lines.append("Décris les chemins d'attaque opérationnels.")
+    return "\n".join(lines)
+
+
+def build_workshop5_prompt(state: Mapping[str, Any]) -> str:
+    """Prompt utilisateur de l'Atelier 5 : scénarios opérationnels + biens + socle + RAG."""
+    outputs = state.get("workshop_outputs", {})
+    cadrage = outputs.get(1, {})
+    operationnels = outputs.get(4, {})
+    lines = [
+        "SCÉNARIOS OPÉRATIONNELS (Atelier 4) :",
+        format_json(operationnels.get("scenarios_operationnels", [])),
+        "",
+        "BIENS ESSENTIELS DU SYSTÈME (Atelier 1) :",
+        format_json(cadrage.get("biens_essentiels", [])),
+        "",
+        "SOCLE DE SÉCURITÉ EXISTANT (Atelier 1) :",
+        format_json(cadrage.get("socle_securite", [])),
+    ]
+    context = state.get("knowledge_context")
+    if context:
+        lines += ["", "RÉFÉRENCES MÉTHODOLOGIQUES :", context]
+    lines.append("Établis le registre des risques et le plan de traitement.")
     return "\n".join(lines)

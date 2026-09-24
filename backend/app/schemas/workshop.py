@@ -8,9 +8,11 @@ from pydantic import BaseModel, BeforeValidator, ConfigDict, model_validator
 
 from app.models.enums import (
     Level,
+    RiskLevel,
     RiskSourceRelevance,
     RiskSourceType,
     SecurityNeed,
+    Treatment,
     WorkshopStatus,
 )
 from app.schemas.validators import normalize_enum
@@ -19,6 +21,8 @@ NormalizedLevel = Annotated[Level, BeforeValidator(normalize_enum)]
 NormalizedNeed = Annotated[SecurityNeed, BeforeValidator(normalize_enum)]
 NormalizedSourceType = Annotated[RiskSourceType, BeforeValidator(normalize_enum)]
 NormalizedRelevance = Annotated[RiskSourceRelevance, BeforeValidator(normalize_enum)]
+NormalizedRiskLevel = Annotated[RiskLevel, BeforeValidator(normalize_enum)]
+NormalizedTreatment = Annotated[Treatment, BeforeValidator(normalize_enum)]
 
 
 # --- Sortie de l'Atelier 1 « Cadrage et socle » ---
@@ -133,6 +137,37 @@ class ScenariosOperationnelsOutput(BaseModel):
     def _check_non_empty(self) -> "ScenariosOperationnelsOutput":
         if not self.scenarios_operationnels:
             raise ValueError("La liste scenarios_operationnels ne doit pas être vide.")
+        return self
+
+
+# --- Sortie de l'Atelier 5 « Traitement du risque » ---
+
+class RisqueTraite(BaseModel):
+    identifiant: str
+    scenario_operationnel: str = ""
+    scenario_strategique: str = ""
+    bien_essentiel: str = ""
+    evenement_redoute: str = ""
+    source_risque: str = ""
+    gravite: NormalizedLevel
+    vraisemblance: NormalizedLevel
+    niveau: NormalizedRiskLevel
+    traitement: NormalizedTreatment
+    mesures: list[str] = []
+    risque_residuel: NormalizedRiskLevel
+    justification: str = ""
+    sources: list[str] = []
+    valide_par: str | None = None
+
+
+class TraitementOutput(BaseModel):
+    risques: list[RisqueTraite] = []
+    plan_traitement: str = ""
+
+    @model_validator(mode="after")
+    def _check_non_empty(self) -> "TraitementOutput":
+        if not self.risques:
+            raise ValueError("La liste risques ne doit pas être vide.")
         return self
 
 

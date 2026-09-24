@@ -5,6 +5,22 @@ import uuid
 from pydantic import BaseModel, ConfigDict
 
 
+class RiskRead(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    identifiant: str | None = None
+    gravite: str | None = None
+    vraisemblance: str | None = None
+    niveau: str | None = None
+    traitement: str | None = None
+    mesures: list = []
+    risque_residuel: str | None = None
+    sources: list = []
+    justification: str | None = None
+    valide_par: str | None = None
+
+
 class AssetRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

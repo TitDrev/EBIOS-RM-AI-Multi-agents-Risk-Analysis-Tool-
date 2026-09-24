@@ -87,14 +87,17 @@ async def test_create_start_validate_flow(client, mock_llm):
     assert resp.status_code == 200, resp.text
     assert resp.json()["numero"] == 4
 
-    # Scénarios stratégiques persistés
+    # Scénarios persistés : stratégiques + opérationnels
     resp = await client.get(f"/api/analyses/{analysis_id}/scenarios", headers=headers)
     assert resp.status_code == 200
     strategiques = [s for s in resp.json() if s["kind"] == "strategique"]
+    operationnels = [s for s in resp.json() if s["kind"] == "operationnel"]
     assert strategiques
     assert strategiques[0]["niveau"] == "eleve"
+    assert operationnels
+    assert operationnels[0]["identifiant"] == "O-01"
 
-    # Validation de l'atelier 4 → Atelier 5 (stub) produit, scénarios opérationnels persistés
+    # Validation de l'atelier 4 → Atelier 5 produit (registre des risques)
     resp = await client.post(
         f"/api/analyses/{analysis_id}/workshops/4/validate",
         json={"corrections": []},
@@ -102,11 +105,42 @@ async def test_create_start_validate_flow(client, mock_llm):
     )
     assert resp.status_code == 200, resp.text
     assert resp.json()["numero"] == 5
+    assert "risques" in resp.json()["output"]
 
-    resp = await client.get(f"/api/analyses/{analysis_id}/scenarios", headers=headers)
-    operationnels = [s for s in resp.json() if s["kind"] == "operationnel"]
-    assert operationnels
-    assert operationnels[0]["identifiant"] == "O-01"
+    # Registre des risques persisté
+    resp = await client.get(f"/api/analyses/{analysis_id}/risks", headers=headers)
+    assert resp.status_code == 200
+    assert resp.json()[0]["identifiant"] == "R-01"
+    assert resp.json()[0]["traitement"] == "reduire"
+
+    # Validation de l'atelier 5 → étude terminée
+    resp = await client.post(
+        f"/api/analyses/{analysis_id}/workshops/5/validate",
+        json={"corrections": []},
+        headers=headers,
+    )
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["status"] == "validated"
+
+    resp = await client.get(f"/api/analyses/{analysis_id}", headers=headers)
+    assert resp.json()["status"] == "completed"
+
+    # Compte rendu JSON
+    resp = await client.post(
+        f"/api/analyses/{analysis_id}/report?format=json", headers=headers
+    )
+    assert resp.status_code == 200, resp.text
+    report = resp.json()
+    assert report["registre_des_risques"][0]["identifiant"] == "R-01"
+    assert report["scenarios"]  # contient stratégiques + opérationnels
+
+    # Compte rendu CSV
+    resp = await client.post(
+        f"/api/analyses/{analysis_id}/report?format=csv", headers=headers
+    )
+    assert resp.status_code == 200
+    assert "identifiant" in resp.text
+    assert "R-01" in resp.text
 
 
 @pytest.mark.asyncio

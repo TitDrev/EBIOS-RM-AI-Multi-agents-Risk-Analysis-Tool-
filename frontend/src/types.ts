@@ -60,3 +60,22 @@ export interface ScenarioOperationnel {
   vraisemblance: string;
   niveau: string;
 }
+
+export interface RisqueTraite {
+  identifiant: string;
+  scenario_operationnel?: string;
+  bien_essentiel?: string;
+  evenement_redoute?: string;
+  source_risque?: string;
+  niveau: string;
+  traitement: string;
+  mesures: string[];
+  risque_residuel: string;
+  justification?: string;
+  sources: string[];
+}
+
+export interface TraitementOutput {
+  risques: RisqueTraite[];
+  plan_traitement: string;
+}

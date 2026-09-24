@@ -68,6 +68,20 @@ MOCK_WORKSHOP4_JSON = """
 }
 """
 
+MOCK_WORKSHOP5_JSON = """
+{
+  "risques": [
+    {"identifiant": "R-01", "scenario_operationnel": "O-01", "scenario_strategique": "S-01",
+     "bien_essentiel": "Données clients", "evenement_redoute": "Fuite de données clients",
+     "source_risque": "Pirate", "gravite": "eleve", "vraisemblance": "moyen",
+     "niveau": "eleve", "traitement": "reduire", "mesures": ["MFA", "Chiffrement"],
+     "risque_residuel": "faible", "justification": "Mesures standard ISO 27002",
+     "sources": ["ISO 27002"]}
+  ],
+  "plan_traitement": "Prioriser les mesures de protection des données clients."
+}
+"""
+
 
 class ConfigurableMockLLM:
     name = "mock"
@@ -81,6 +95,8 @@ class ConfigurableMockLLM:
             content = MOCK_WORKSHOP3_JSON
         elif "ATELIER 4" in system_prompt:
             content = MOCK_WORKSHOP4_JSON
+        elif "ATELIER 5" in system_prompt:
+            content = MOCK_WORKSHOP5_JSON
         else:
             content = MOCK_CADRAGE_JSON
         return LLMResponse(content=content, tokens_in=10, tokens_out=10)

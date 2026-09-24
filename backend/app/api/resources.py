@@ -11,10 +11,11 @@ from app.database import get_session
 from app.models.analysis import Analysis
 from app.models.asset import Asset
 from app.models.feared_event import FearedEvent
+from app.models.risk import Risk
 from app.models.risk_source import RiskSource
 from app.models.scenario import Scenario
 from app.models.user import User
-from app.schemas.resources import AssetRead, FearedEventRead, RiskSourceRead, ScenarioRead
+from app.schemas.resources import AssetRead, FearedEventRead, RiskRead, RiskSourceRead, ScenarioRead
 
 router = APIRouter(prefix="/analyses/{analysis_id}", tags=["resources"])
 
@@ -77,5 +78,19 @@ async def list_scenarios(
     return list(
         await session.scalars(
             select(Scenario).where(Scenario.analysis_id == analysis_id).order_by(Scenario.identifiant)
+        )
+    )
+
+
+@router.get("/risks", response_model=list[RiskRead])
+async def list_risks(
+    analysis_id: uuid.UUID,
+    session: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user),
+) -> list[Risk]:
+    await _ensure_exists(session, analysis_id)
+    return list(
+        await session.scalars(
+            select(Risk).where(Risk.analysis_id == analysis_id).order_by(Risk.identifiant)
         )
     )
