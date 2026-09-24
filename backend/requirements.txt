@@ -1,0 +1,35 @@
+# Core
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+pydantic==2.10.4
+pydantic-settings==2.7.1
+email-validator==2.2.0
+python-multipart==0.0.20
+
+# Database
+sqlalchemy[asyncio]==2.0.36
+asyncpg==0.30.0
+alembic==1.14.0
+pgvector==0.3.6
+
+# Auth
+python-jose[cryptography]==3.3.0
+bcrypt==4.2.1
+
+# Agents / LLM
+langgraph==0.2.62
+langchain-core==0.3.28
+httpx==0.28.1
+
+# Queue (activé à partir du Sprint 2)
+celery==5.4.0
+redis==5.2.1
+
+# Reports
+weasyprint==63.1
+
+# Dev / tests
+pytest==8.3.4
+pytest-asyncio==0.25.0
+ruff==0.9.2
+mypy==1.14.1
