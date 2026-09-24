@@ -30,6 +30,26 @@ Application web multi-agents pour l'analyse de risques des systèmes d'informati
 
 ---
 
+---
+
+## Documentation (par catégorie)
+
+| Catégorie | Doc |
+|-----------|-----|
+| Index + preuves | [`docs/README.md`](docs/README.md) |
+| Démarche & alignement ANSSI (EBIOS RM, échelles, ISO) | [`docs/01_demarche_ANSSI.md`](docs/01_demarche_ANSSI.md) |
+| Sécurité applicative (mesures + preuves) | [`docs/02_securite_applicative.md`](docs/02_securite_applicative.md) |
+| Garde-fous IA (OWASP LLM Top 10 + preuves) | [`docs/03_garde_fous_IA.md`](docs/03_garde_fous_IA.md) |
+| Traçabilité | [`docs/04_tracabilite.md`](docs/04_tracabilite.md) |
+| Conformité au sujet E21 (matrice critères → preuves) | [`docs/05_conformite_E21.md`](docs/05_conformite_E21.md) |
+| Installation & déploiement | [`docs/06_installation_deploiement.md`](docs/06_installation_deploiement.md) |
+| Architecture technique (référence) | [`docs/DOCUMENTATION_TECHNIQUE.md`](docs/DOCUMENTATION_TECHNIQUE.md) |
+
+**Audit de sécurité automatisé** : `python backend/scripts/security_audit.py` → retourne OK
+(clé secrète, secrets commités, contrôle d'accès, docker, garde-fous).
+
+---
+
 ## Architecture
 
 ```

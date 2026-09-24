@@ -2,6 +2,9 @@
 
 Analyse de risques EBIOS RM par agents IA — application web multi-agents.
 
+> Voir aussi l'[index de documentation](README.md) : démarche/ANSSI, sécurité applicative,
+> garde-fous IA, traçabilité, conformité au sujet, installation.
+
 ---
 
 ## 1. Vue d'ensemble

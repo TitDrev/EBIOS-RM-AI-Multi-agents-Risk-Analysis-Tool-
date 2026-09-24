@@ -60,3 +60,15 @@ async def test_reference_case_full_pipeline(client, mock_llm, case_id):
     assert report["registre_des_risques"]
     assert report["scenarios"]
     assert report["biens"]
+
+    # Chaque risque du registre cite une source (critère E21 n°1 : parade anti-hallucination).
+    risques = (await client.get(f"/api/analyses/{analysis_id}/risks", headers=headers)).json()
+    assert risques and all(r["sources"] for r in risques)
+
+    # Validation humaine d'un risque précis (critère E21 n°3).
+    resp = await client.post(
+        f"/api/analyses/{analysis_id}/risks/{risques[0]['id']}/validate",
+        headers=headers,
+    )
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["valide_par"] == f"analyst_{case_id}"

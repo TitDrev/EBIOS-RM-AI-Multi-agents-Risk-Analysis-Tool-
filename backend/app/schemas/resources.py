@@ -19,6 +19,7 @@ class RiskRead(BaseModel):
     sources: list = []
     justification: str | None = None
     valide_par: str | None = None
+    validated_at: str | None = None
 
 
 class AssetRead(BaseModel):
