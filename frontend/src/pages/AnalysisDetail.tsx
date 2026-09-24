@@ -52,11 +52,35 @@ const TREATMENT: Record<string, string> = {
   accepter: "text-amber-700 font-semibold",
 };
 
+const STATUS_CHIP: Record<string, string> = {
+  pending: "bg-slate-200 text-slate-600",
+  awaiting_validation: "bg-amber-400 text-amber-950",
+  validated: "bg-green-500 text-white",
+  failed: "bg-red-500 text-white",
+  running: "bg-blue-500 text-white",
+};
+const STATUS_LABEL: Record<string, string> = {
+  pending: "à venir",
+  awaiting_validation: "à valider",
+  validated: "validé",
+  failed: "échec",
+  running: "en cours",
+};
+
 function Badge({ value, map }: { value: string; map: Record<string, string> }) {
   const cls = map[value] ?? "bg-slate-100 text-slate-600";
   return (
-    <span className={`inline-block whitespace-nowrap rounded px-1.5 py-0.5 text-xs font-medium ${cls}`}>
+    <span className={`inline-block whitespace-nowrap rounded-md px-2 py-1 text-xs font-semibold tracking-wide ${cls}`}>
       {value}
+    </span>
+  );
+}
+
+function StatusChip({ status }: { status: string }) {
+  const cls = STATUS_CHIP[status] ?? "bg-slate-200 text-slate-600";
+  return (
+    <span className={`inline-block whitespace-nowrap rounded-md px-2 py-1 text-xs font-semibold ${cls}`}>
+      {STATUS_LABEL[status] ?? status}
     </span>
   );
 }
@@ -220,17 +244,19 @@ export default function AnalysisDetail() {
       </div>
 
       {/* Barre de navigation des 5 ateliers */}
-      <div className="grid grid-cols-5 gap-2">
+      <div className="grid grid-cols-5 gap-2 sm:gap-3">
         {[1, 2, 3, 4, 5].map((i) => (
           <button
             key={i}
             onClick={() => setSelected(i)}
-            className={`rounded px-2 py-2 text-center transition ${navClass(i)} ${
-              selected === i ? "ring-2 ring-slate-700" : ""
+            className={`rounded-lg px-2 py-2 text-center shadow-sm transition ${navClass(i)} ${
+              selected === i ? "ring-2 ring-slate-800 ring-offset-1" : "opacity-90"
             }`}
           >
-            <span className="block text-sm font-semibold">{i}</span>
-            <span className="block truncate text-[10px]">{WORKSHOP_LABELS[i - 1]}</span>
+            <span className="block text-base font-bold leading-none">Atelier {i}</span>
+            <span className="mt-1 block truncate text-[10px] font-medium sm:text-[11px]">
+              {WORKSHOP_LABELS[i - 1]}
+            </span>
           </button>
         ))}
       </div>
@@ -276,10 +302,10 @@ function WorkshopCard({ workshop, onValidate }: { workshop: Workshop; onValidate
   const title = `Atelier ${workshop.numero} — ${WORKSHOP_LABELS[workshop.numero - 1]}`;
 
   return (
-    <div className="rounded border bg-white p-4">
-      <div className="mb-2 flex items-center justify-between">
-        <h3 className="font-semibold">{title}</h3>
-        <span className="text-xs uppercase text-slate-500">{workshop.status}</span>
+    <div className="rounded-lg border border-slate-200 bg-white p-5 shadow-sm">
+      <div className="mb-3 flex items-center justify-between gap-2 border-b border-slate-100 pb-3">
+        <h3 className="text-base font-semibold text-slate-800">{title}</h3>
+        <StatusChip status={workshop.status} />
       </div>
 
       {workshop.numero === 1 && <Cadrage output={workshop.output as CadrageOutput} />}
@@ -299,7 +325,7 @@ function WorkshopCard({ workshop, onValidate }: { workshop: Workshop; onValidate
       {workshop.numero === 5 && <Traitement output={workshop.output as TraitementOutput} />}
 
       {awaiting && (
-        <button className="mt-3 rounded bg-green-700 px-3 py-2 text-white" onClick={onValidate}>
+        <button className="mt-4 rounded-lg bg-green-700 px-4 py-2 font-medium text-white shadow-sm transition hover:bg-green-800" onClick={onValidate}>
           Valider cet atelier
         </button>
       )}
@@ -307,8 +333,8 @@ function WorkshopCard({ workshop, onValidate }: { workshop: Workshop; onValidate
   );
 }
 
-const TH = "border-b border-slate-200 px-3 py-2 text-left text-xs font-semibold uppercase tracking-wide text-slate-500";
-const TD = "border-b border-slate-100 px-3 py-2 align-top text-slate-700";
+const TH = "border border-slate-200 bg-slate-100 px-3 py-2 text-left align-middle text-xs font-semibold uppercase tracking-wide text-slate-600";
+const TD = "border border-slate-200 px-3 py-2 align-middle text-slate-700";
 const TABLE = "w-full border-collapse text-sm";
 
 function Cadrage({ output }: { output: CadrageOutput }) {
@@ -320,13 +346,13 @@ function Cadrage({ output }: { output: CadrageOutput }) {
   };
   return (
     <div className="space-y-4 text-sm">
-      <div className="rounded border p-3">
+      <div className="rounded-lg border border-slate-200 p-3">
         <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Périmètre</p>
         <p className="text-slate-600">{output.perimetre}</p>
       </div>
 
       {output.biens_essentiels.length > 0 && (
-        <div className="rounded border">
+        <div className="rounded-lg border border-slate-200">
           <p className="border-b bg-slate-50 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
             Biens essentiels
           </p>
@@ -350,7 +376,7 @@ function Cadrage({ output }: { output: CadrageOutput }) {
       )}
 
       {output.biens_supports.length > 0 && (
-        <div className="rounded border">
+        <div className="rounded-lg border border-slate-200">
           <p className="border-b bg-slate-50 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
             Biens supports
           </p>
@@ -376,7 +402,7 @@ function Cadrage({ output }: { output: CadrageOutput }) {
       )}
 
       {output.evenements_redoutes.length > 0 && (
-        <div className="rounded border">
+        <div className="rounded-lg border border-slate-200">
           <p className="border-b bg-slate-50 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
             Événements redoutés
           </p>
@@ -408,7 +434,7 @@ function Cadrage({ output }: { output: CadrageOutput }) {
       )}
 
       {output.socle_securite.length > 0 && (
-        <div className="rounded border">
+        <div className="rounded-lg border border-slate-200">
           <p className="border-b bg-slate-50 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
             Socle de sécurité
           </p>
@@ -444,11 +470,12 @@ function SourcesRisques({ sources }: { sources: SourceRisque[] }) {
   };
   if (sources.length === 0) return <p className="text-sm text-slate-500">Aucune source.</p>;
   return (
-    <div className="rounded border">
+    <div className="rounded-lg border border-slate-200">
       <p className="border-b bg-slate-50 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
         Sources de risques (SR / objectif visé)
       </p>
-      <table className={TABLE}>
+      <div className="overflow-x-auto">
+        <table className={TABLE}>
         <thead>
           <tr className="bg-slate-50/50">
             <th className={TH}>Type</th>
@@ -479,7 +506,8 @@ function SourcesRisques({ sources }: { sources: SourceRisque[] }) {
             </tr>
           ))}
         </tbody>
-      </table>
+        </table>
+      </div>
     </div>
   );
 }
@@ -487,7 +515,7 @@ function SourcesRisques({ sources }: { sources: SourceRisque[] }) {
 function Scenarios({ scenarios }: { scenarios: ScenarioStrategique[] }) {
   if (scenarios.length === 0) return <p className="text-sm text-slate-500">Aucun scénario.</p>;
   return (
-    <div className="rounded border">
+    <div className="rounded-lg border border-slate-200">
       <p className="border-b bg-slate-50 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
         Scénarios stratégiques
       </p>
@@ -532,7 +560,7 @@ function Scenarios({ scenarios }: { scenarios: ScenarioStrategique[] }) {
 function ScenariosOperationnels({ scenarios }: { scenarios: ScenarioOperationnel[] }) {
   if (scenarios.length === 0) return <p className="text-sm text-slate-500">Aucun scénario.</p>;
   return (
-    <div className="rounded border">
+    <div className="rounded-lg border border-slate-200">
       <p className="border-b bg-slate-50 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
         Scénarios opérationnels
       </p>
@@ -596,7 +624,7 @@ function Traitement({ output }: { output: TraitementOutput }) {
   const risques = output.risques ?? [];
   return (
     <div className="space-y-4 text-sm">
-      <div className="rounded border">
+      <div className="rounded-lg border border-slate-200">
         <p className="border-b bg-slate-50 px-3 py-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
           Registre des risques
         </p>
