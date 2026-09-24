@@ -196,8 +196,10 @@ Transparence exigée par le cadre du projet (item 7 de la liste de contrôle) :
 - [x] Sprint 4 — Atelier 4 (scénarios opérationnels, MITRE ATT&CK) + outils
 - [x] Sprint 5 — Atelier 5 (traitement du risque) + registre + compte rendu (JSON/CSV/PDF)
 - [x] Sprint 6 — WebSocket de suivi en temps réel + comparaison d'études
-- [ ] Sprint 7 — Cas de référence (A/B/C), dossier écrit, audit, déploiement
+- [x] Sprint 7 — Cas de référence A/B/C, audit de sécurité, documentation technique et déploiement
 
+> **Livrables humains restants** (à produire par le groupe) : dossier écrit, analyse manuelle de
+> référence, identités des membres. Voir `docs/DOCUMENTATION_TECHNIQUE.md`.
 > Les reprises ciblées (corriger/relancer un atelier) sont d'ores et déjà disponibles via
 > `/workshops/{n}/correct` et `/workshops/{n}/retry`.
 
