@@ -1,5 +1,6 @@
 import { BrowserRouter, Link, Navigate, Route, Routes } from "react-router-dom";
 import Login from "./pages/Login";
+import Register from "./pages/Register";
 import Analyses from "./pages/Analyses";
 import AnalysisDetail from "./pages/AnalysisDetail";
 import Compare from "./pages/Compare";
@@ -30,6 +31,7 @@ export default function App() {
         <section className="mx-auto max-w-5xl p-6">
           <Routes>
             <Route path="/login" element={<Login />} />
+            <Route path="/register" element={token ? <Navigate to="/" /> : <Register />} />
             <Route path="/" element={token ? <Analyses /> : <Navigate to="/login" />} />
             <Route
               path="/compare"
