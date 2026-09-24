@@ -1,5 +1,19 @@
 # 6. Installation & déploiement
 
+## Guide rapide d'utilisation (web)
+
+1. `http://localhost:3000` → **« Créer un compte »** (rôle **Analyste**).
+2. **Créer une étude** : importer un ou plusieurs **PDF / Markdown / JSON** (le texte est lu et
+   rejoint la base de connaissances) ou renseigner la description à la main.
+3. **« Démarrer l'analyse »** : la barre des 5 ateliers suit l'avancée (couleurs par statut,
+   progression en temps réel).
+4. **« Valider cet atelier »** après chaque sortie.
+5. Étude terminée → **compte rendu JSON / CSV / PDF / Excel** (Excel : entrées & contexte,
+   un onglet par atelier, plan de traitement, synthèse avec matrices).
+6. Menu **« Comparer »** pour comparer deux études.
+
+> Exemples d'entrées prêts à l'emploi : `examples/si_boutique/` et `examples/si_PME/`.
+
 ## Prérequis
 
 - Python 3.11+, PostgreSQL (17/18) avec l'extension `vector`, Node 20 (frontend).

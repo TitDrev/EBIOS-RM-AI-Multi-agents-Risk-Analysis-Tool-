@@ -195,9 +195,6 @@ _LEVEL_FILL = {
     "critique": "FFC7CE",   # rouge clair
 }
 _HEADER_FILL = "DDEBF7"
-_TRAITEMENT = {
-    "reduire": "2E75B6", "transferer": "7030A0", "eviter": "808080", "accepter": "BF9000",
-}
 
 
 def to_excel(data: dict) -> bytes:
@@ -213,7 +210,6 @@ def to_excel(data: dict) -> bytes:
     _GRAVITY = {"g1": "C6EFCE", "g2": "D9EAD3", "g3": "FFE699", "g4": "FFC7CE"}
     _LIKELIHOOD = {"v1": "F2F2F2", "v2": "DDEBF7", "v3": "BDD7EE", "v4": "9DC3E6"}
     _PERTINENCE = {"retenue": "C6EFCE", "a_suivre": "FFF2CC", "ecartee": "D9D9D9"}
-    _TRAITEMENT = {"reduire": "2E75B6", "transferer": "7030A0", "eviter": "808080", "accepter": "BF9000"}
 
     def cell_val(v):
         if v is None:

@@ -30,8 +30,6 @@ Application web multi-agents pour l'analyse de risques des systèmes d'informati
 
 ---
 
----
-
 ## Documentation (par catégorie)
 
 | Catégorie | Doc |
@@ -82,56 +80,127 @@ PostgreSQL + pgvector        LLM (Opencode Go → deepseek-v4-pro)
 
 ---
 
-## Démarrage rapide
+## Installation & configuration
 
-### Avec Docker Compose
+### Prérequis
 
-```bash
-cp backend/.env.example .env        # puis renseigner les variables LLM
-docker compose up --build
-# backend : http://localhost:8000 (docs : /docs)
-# frontend : http://localhost:3000
-```
+| Outil | Version | Remarque |
+|-------|---------|----------|
+| Python | ≥ 3.11 | venv recommandée |
+| PostgreSQL | 16 / 17 / 18 | avec l'extension **`vector`** (pgvector) |
+| Node.js | ≥ 18 | avec `npm` (frontend uniquement) |
+| Clé LLM | — | Opencode Go *(ou mode `mock` pour tester sans clé)* |
 
-### En développement (sans Docker)
-
-Prérequis : PostgreSQL (17/18) avec extension `vector`, Redis (optionnel), Python 3.11+.
+### 1. Backend
 
 ```bash
 cd backend
 python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-
-# créer la base et appliquer les migrations
-createdb risk_agents   # (ou équivalent)
-alembic upgrade head
-
-# configuration LLM (Opencode Go)
-cp .env.example .env
-# renseigner LLM_ENDPOINT_URL, LLM_API_KEY, LLM_MODEL
-
-uvicorn app.main:app --reload
 ```
 
-Config du LLM (`.env`) :
+> Après activation, tu peux utiliser `python …` ou directement `.venv/bin/python …`.
+
+### 2. Base de données
+
+Créer la base puis activer l'extension :
+
+```bash
+createdb risk_agents
+psql -d risk_agents -c "CREATE EXTENSION IF NOT EXISTS vector;"
+```
+
+Appliquer les migrations (schéma complet du projet) :
+
+```bash
+alembic upgrade head
+```
+
+### 3. Configuration (`backend/.env`)
+
+```bash
+cp .env.example .env
+```
+
+| Variable | Description |
+|----------|-------------|
+| `DATABASE_URL` | URL de connexion PostgreSQL (pilote `asyncpg`) |
+| `SECRET_KEY` | Clé de signature JWT (forte ; le démarrage est refusé si faible hors `DEBUG`) |
+| `DEBUG` | `true` en dev, `false` en production |
+| `LLM_PROVIDER` | `opencode_go` (LLM réel) ou `mock` (réponses déterministes, hors ligne) |
+| `LLM_ENDPOINT_URL` | Endpoint Opencode Go (compatible OpenAI) |
+| `LLM_API_KEY` | Clé d'API Opencode Go |
+| `LLM_MODEL` | Modèle utilisé (ex. `deepseek-v4-pro`) |
+| `CORS_ORIGINS` | Origines autorisées du frontend (séparées par des virgules) |
+
+Exemple avec le LLM réel :
 
 ```
 LLM_PROVIDER=opencode_go
 LLM_ENDPOINT_URL=https://opencode.ai/inference/openai/v1/chat/completions
-LLM_API_KEY=...
+LLM_API_KEY=…                     # ta clé Opencode Go
 LLM_MODEL=deepseek-v4-pro
 ```
 
-> Le mode `LLM_PROVIDER=mock` permet de tourner sans appel réseau (réponses déterministes pour les tests).
+> **Pas encore de clé ?** Mets `LLM_PROVIDER=mock` : l'analyse se déroule avec des sorties
+> déterministes, idéal pour découvrir l'outil. Pour vérifier l'endpoint LLM :
+> `python scripts/smoke_llm.py`.
 
-### Démo en ligne de commande (recommandée)
+### 4. Lancer le backend
+
+```bash
+uvicorn app.main:app --reload
+# API      : http://localhost:8000
+# OpenAPI  : http://localhost:8000/docs
+```
+
+### 5. Lancer le frontend (facultatif, recommandé)
+
+```bash
+cd frontend
+npm install
+npm run dev
+# application : http://localhost:3000
+```
+
+### Alternative : Docker Compose (tout d'un coup)
+
+```bash
+cp backend/.env.example .env
+docker compose up --build
+# backend : http://localhost:8000  ·  frontend : http://localhost:3000
+```
+
+---
+
+## Utilisation
+
+### A. Version web (recommandée)
+
+1. **Créer un compte** — `http://localhost:3000` → « Se connecter » → « Créer un compte »
+   (choisir le rôle **Analyste** pour créer / valider / corriger).
+2. **Créer une étude** (2 façons) :
+   - **Importer un document** : un ou plusieurs fichiers **PDF / Markdown / JSON** suffisent —
+     le texte est lu et devient l'entrée de l'analyse (et rejoint la base de connaissances).
+   - **Saisie manuelle** : nom, écosystème, flux de données, contexte métier.
+   *(Exemples prêts à importer : `examples/si_boutique/`, `examples/si_PME/`.)*
+3. **Démarrer** — dans l'étude : « Démarrer l'analyse ». La **barre des 5 ateliers** suit
+   l'avancée (couleur par statut, **progression en temps réel** pendant la génération).
+4. **Valider** — chaque atelier affiche sa sortie (tableaux et badges colorés) ; clique
+   « Valider cet atelier » pour enchaîner. *(Corriger / relancer : voir API ou CLI `--pas-a-pas`.)*
+5. **Compte rendu** — étude terminée → boutons **JSON / CSV / PDF / Excel**. L'export **Excel**
+   contient : entrées & contexte, un onglet par atelier, plan de traitement, et une synthèse
+   finale (matrices des risques d'origine et résiduels).
+6. **Comparer** — menu « Comparer » pour comparer deux études (métriques et écarts).
+
+### B. Ligne de commande (CLI)
 
 Une commande lance l'analyse complète à partir d'un dossier de livrables d'un SI :
 
 ```bash
 cd backend
-python scripts/demo.py --si ../examples/si_boutique           # mode auto (recommandé)
-python scripts/demo.py --si ../examples/si_boutique --pas-a-pas  # validation/corrections interactives
+.venv/bin/python scripts/demo.py --si ../examples/si_boutique          # mode auto
+.venv/bin/python scripts/demo.py --si ../examples/si_PME --pas-a-pas    # validation/corrections interactives
 ```
 
 Dossier SI attendu :
@@ -142,9 +211,15 @@ ma-etude/
 └── documents/            # (optionnel) fichiers .md/.txt intégrés à la base de connaissances
 ```
 
-Exemple fourni : [`examples/si_boutique/`](examples/si_boutique/). Sorties : `ma-etude/rapport/`
-(`compte_rendu.json`, `registre.csv`). Avec une clé LLM (`.env`), l'analyse est **réelle** ; avec
-`LLM_PROVIDER=mock`, une analyse de démonstration plausible est produite hors ligne.
+Sorties dans `ma-etude/rapport/` : `compte_rendu.json`, `registre.csv`. Avec une clé LLM
+l'analyse est **réelle** ; en `LLM_PROVIDER=mock`, une analyse de démonstration plausible est
+produite hors ligne.
+
+### C. API secondairement
+
+Toutes les actions web sont disponibles en REST (voir le tableau ci-dessous) et la reprise
+ciblée (`/correct`, `/retry`) se pilote via l'API.
+
 
 ---
 
@@ -179,6 +254,7 @@ sprint.md
 | POST | `/api/auth/register` | Inscription |
 | POST | `/api/auth/login` | Connexion (JWT) |
 | POST | `/api/analyses` | Créer une étude (description du SI) |
+| POST | `/api/analyses/upload` | **Créer une étude depuis un fichier** (PDF / Markdown / JSON) |
 | POST | `/api/analyses/{id}/start` | Lancer le pipeline des 5 ateliers |
 | GET | `/api/analyses/{id}/workshops` | Statut des ateliers |
 | POST | `/api/analyses/{id}/workshops/{n}/validate` | **Validation humaine** d'un atelier |
@@ -188,7 +264,7 @@ sprint.md
 | GET | `/api/analyses/{id}/risk-sources` | Sources de risques |
 | GET | `/api/analyses/{id}/scenarios` | Scénarios stratégiques & opérationnels |
 | GET | `/api/analyses/{id}/risks` | Registre des risques |
-| POST | `/api/analyses/{id}/report?format=json\|csv\|pdf` | Compte rendu final |
+| POST | `/api/analyses/{id}/report?format=json\|csv\|pdf\|xlsx` | Compte rendu (JSON/CSV/PDF/**Excel**) |
 | GET | `/ws/analyses/{id}` | WebSocket de suivi temps réel (token en query) |
 | POST | `/api/analyses/compare` | Comparer deux études |
 
@@ -251,7 +327,7 @@ Transparence exigée par le cadre du projet (item 7 de la liste de contrôle) :
 
 ```bash
 cd backend
-pytest                      # unitaire + intégration (40 tests)
+pytest                      # unitaire + intégration (49 tests)
 ruff check app tests        # lint
 mypy app                    # typage
 ```
