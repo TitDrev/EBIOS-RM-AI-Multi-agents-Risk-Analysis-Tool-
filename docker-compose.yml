@@ -28,7 +28,8 @@ services:
       REDIS_URL: redis://redis:6379
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/1
-      SECRET_KEY: ${SECRET_KEY:-change-me}
+      DEBUG: ${DEBUG:-true}
+      SECRET_KEY: ${SECRET_KEY:-dev-compose-not-for-production}
       LLM_PROVIDER: ${LLM_PROVIDER:-opencode_go}
       LLM_MODEL: ${LLM_MODEL:-deepseek-v4-pro}
       LLM_ENDPOINT_URL: ${LLM_ENDPOINT_URL:-https://opencode.ai/inference/openai/v1/chat/completions}
@@ -51,7 +52,8 @@ services:
       REDIS_URL: redis://redis:6379
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/1
-      SECRET_KEY: ${SECRET_KEY:-change-me}
+      DEBUG: ${DEBUG:-true}
+      SECRET_KEY: ${SECRET_KEY:-dev-compose-not-for-production}
       LLM_PROVIDER: ${LLM_PROVIDER:-opencode_go}
       LLM_MODEL: ${LLM_MODEL:-deepseek-v4-pro}
       LLM_ENDPOINT_URL: ${LLM_ENDPOINT_URL:-https://opencode.ai/inference/openai/v1/chat/completions}

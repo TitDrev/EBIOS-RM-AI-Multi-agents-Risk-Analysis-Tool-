@@ -8,18 +8,24 @@ on:
 jobs:
   lint:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - run: pip install ruff mypy
-      - run: ruff check backend/
-      - run: mypy backend/app
+      - run: pip install "ruff==0.9.2" "mypy==1.14.1"
+      - run: ruff check app tests
+      - run: mypy app
 
   test:
     needs: lint
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
     services:
       postgres:
         image: pgvector/pgvector:pg16
@@ -36,17 +42,17 @@ jobs:
           --health-retries 5
     env:
       TEST_DATABASE_URL: postgresql+asyncpg://admin:test@localhost:5432/risk_agents_test
+      LLM_PROVIDER: mock
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - run: pip install -r backend/requirements.txt
+      - run: pip install -r requirements.txt
       - run: |
           sudo apt-get update && sudo apt-get install -y postgresql-client
-          psql "$TEST_DATABASE_URL" -c "CREATE EXTENSION IF NOT EXISTS vector;" 2>/dev/null || true
-      - run: pytest backend/tests/ -v
-        working-directory: backend
+          PGPASSWORD=test psql -h localhost -U admin -d risk_agents_test -c "CREATE EXTENSION IF NOT EXISTS vector;"
+      - run: pytest tests -v
 
   build:
     needs: test

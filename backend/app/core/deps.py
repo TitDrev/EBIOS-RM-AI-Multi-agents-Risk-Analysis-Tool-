@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import decode_token
 from app.database import get_session
+from app.models.analysis import Analysis
 from app.models.enums import UserRole
 from app.models.user import User
 
@@ -49,3 +50,26 @@ def require_role(*roles: UserRole):
 
 require_admin = require_role(UserRole.ADMIN)
 require_analyst = require_role(UserRole.ADMIN, UserRole.ANALYST)
+
+
+def user_can_access(user: User, created_by: uuid.UUID | None) -> bool:
+    """Vrai si l'utilisateur a le droit d'accéder à une étude (propriétaire ou admin)."""
+    if user.role == UserRole.ADMIN:
+        return True
+    return created_by is not None and created_by == user.id
+
+
+async def get_owned_analysis(
+    analysis_id: uuid.UUID,
+    session: AsyncSession = Depends(get_session),
+    user: User = Depends(get_current_user),
+) -> Analysis:
+    """Dépendance : retourne l'étude si accessible (propriétaire ou admin), sinon 403/404."""
+    analysis = await session.get(Analysis, analysis_id)
+    if analysis is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Étude introuvable")
+    if not user_can_access(user, analysis.created_by):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Accès non autorisé à cette étude"
+        )
+    return analysis

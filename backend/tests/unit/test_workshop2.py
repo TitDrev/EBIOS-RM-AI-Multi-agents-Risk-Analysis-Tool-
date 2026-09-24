@@ -16,3 +16,4 @@ async def test_workshop_2_produces_sources(mock_llm):
 
     assert output["sources_risques"][0]["type"] == "attaquant_externe"
     assert output["sources_risques"][0]["pertinence"] == "retenue"
+    assert output["sources_risques"][0]["capacite"] == "g3"

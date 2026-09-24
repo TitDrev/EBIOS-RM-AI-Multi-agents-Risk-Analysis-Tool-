@@ -7,7 +7,8 @@ from typing import Annotated
 from pydantic import BaseModel, BeforeValidator, ConfigDict, model_validator
 
 from app.models.enums import (
-    Level,
+    GravityLevel,
+    LikelihoodLevel,
     RiskLevel,
     RiskSourceRelevance,
     RiskSourceType,
@@ -15,9 +16,10 @@ from app.models.enums import (
     Treatment,
     WorkshopStatus,
 )
-from app.schemas.validators import normalize_enum
+from app.schemas.validators import normalize_enum, normalize_gravity, normalize_likelihood
 
-NormalizedLevel = Annotated[Level, BeforeValidator(normalize_enum)]
+NormalizedGravity = Annotated[GravityLevel, BeforeValidator(normalize_gravity)]
+NormalizedLikelihood = Annotated[LikelihoodLevel, BeforeValidator(normalize_likelihood)]
 NormalizedNeed = Annotated[SecurityNeed, BeforeValidator(normalize_enum)]
 NormalizedSourceType = Annotated[RiskSourceType, BeforeValidator(normalize_enum)]
 NormalizedRelevance = Annotated[RiskSourceRelevance, BeforeValidator(normalize_enum)]
@@ -42,17 +44,20 @@ class EvenementRedoute(BaseModel):
     bien_essentiel: str
     besoin: NormalizedNeed
     label: str
-    gravite: NormalizedLevel
+    gravite: NormalizedGravity
 
 
 class MesureSocle(BaseModel):
     mesure: str
     referentiel: str = ""
+    ecart: str | None = None
 
 
 class Echelles(BaseModel):
-    gravite: list[str] = ["faible", "moyen", "eleve"]
-    vraisemblance: list[str] = ["faible", "moyen", "eleve"]
+    """Échelles EBIOS RM : gravité G1→G4, vraisemblance V1→V4."""
+
+    gravite: list[str] = ["g1", "g2", "g3", "g4"]
+    vraisemblance: list[str] = ["v1", "v2", "v3", "v4"]
 
 
 class CadrageOutput(BaseModel):
@@ -72,14 +77,15 @@ class CadrageOutput(BaseModel):
         return self
 
 
-# --- Sortie de l'Atelier 2 « Sources de risques » ---
+# --- Sortie de l'Atelier 2 « Sources de risques » (menaces intentionnelles, couples SR/OV) ---
 
 class SourceRisque(BaseModel):
     type: NormalizedSourceType
     name: str = ""
     objectif: str = ""
     motivation: str = ""
-    capacite: NormalizedLevel | None = None
+    activite: str = ""
+    capacite: NormalizedGravity | None = None
     biens_vises: list[str] = []
     pertinence: NormalizedRelevance = RiskSourceRelevance.RETENUE
     description: str = ""
@@ -95,18 +101,25 @@ class SourcesRisquesOutput(BaseModel):
         return self
 
 
-# --- Sortie de l'Atelier 3 « Scénarios stratégiques » ---
+# --- Sortie de l'Atelier 3 « Scénarios stratégiques » (cote de gravité seule) ---
 
 class ScenarioStrategique(BaseModel):
     identifiant: str
     source_risque: str
     evenement_redoute: str
     bien_essentiel: str = ""
-    gravite: NormalizedLevel
-    vraisemblance: NormalizedLevel
+    gravite: NormalizedGravity
+    sources: list[str] = []
+
+
+class PartiePrenante(BaseModel):
+    name: str
+    role: str = ""
+    motif_criticite: str = ""
 
 
 class ScenariosStrategiquesOutput(BaseModel):
+    parties_prenantes: list[PartiePrenante] = []
     scenarios_strategiques: list[ScenarioStrategique] = []
 
     @model_validator(mode="after")
@@ -116,7 +129,7 @@ class ScenariosStrategiquesOutput(BaseModel):
         return self
 
 
-# --- Sortie de l'Atelier 4 « Scénarios opérationnels » ---
+# --- Sortie de l'Atelier 4 « Scénarios opérationnels » (vraisemblance évaluée ici) ---
 
 class ScenarioOperationnel(BaseModel):
     identifiant: str
@@ -126,8 +139,15 @@ class ScenarioOperationnel(BaseModel):
     chemin_attaque: list[str] = []
     biens_supports_impliques: list[str] = []
     techniques_attaque: list[str] = []
-    gravite: NormalizedLevel
-    vraisemblance: NormalizedLevel
+    gravite: NormalizedGravity
+    vraisemblance: NormalizedLikelihood
+    sources: list[str] = []
+
+    @model_validator(mode="after")
+    def _check_chemin(self) -> "ScenarioOperationnel":
+        if not self.chemin_attaque:
+            raise ValueError("Un scénario opérationnel doit avoir un chemin_attaque non vide.")
+        return self
 
 
 class ScenariosOperationnelsOutput(BaseModel):
@@ -149,8 +169,8 @@ class RisqueTraite(BaseModel):
     bien_essentiel: str = ""
     evenement_redoute: str = ""
     source_risque: str = ""
-    gravite: NormalizedLevel
-    vraisemblance: NormalizedLevel
+    gravite: NormalizedGravity
+    vraisemblance: NormalizedLikelihood
     niveau: NormalizedRiskLevel
     traitement: NormalizedTreatment
     mesures: list[str] = []
@@ -181,6 +201,7 @@ class WorkshopRead(BaseModel):
     numero: int
     status: WorkshopStatus
     output: dict
+    corrections: list[str] = []
     validated_by: str | None = None
     validated_at: str | None = None
     created_at: datetime

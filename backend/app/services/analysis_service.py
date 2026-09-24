@@ -2,7 +2,9 @@
 
 import time
 import uuid
+from collections.abc import Mapping
 from datetime import datetime, timezone
+from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -41,6 +43,15 @@ def _now() -> str:
     return datetime.now(timezone.utc).isoformat()
 
 
+def _state_hash(state: Mapping[str, Any]) -> str:
+    """Empreinte déterministe de l'état d'entrée d'un atelier (traçabilité)."""
+    import hashlib
+    import json
+
+    raw = json.dumps(state, sort_keys=True, ensure_ascii=False, default=str)
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]
+
+
 async def _load_outputs(session: AsyncSession, analysis_id: uuid.UUID) -> dict[int, dict]:
     rows = await session.scalars(
         select(Workshop).where(Workshop.analysis_id == analysis_id).order_by(Workshop.numero)
@@ -48,8 +59,70 @@ async def _load_outputs(session: AsyncSession, analysis_id: uuid.UUID) -> dict[i
     return {w.numero: w.output for w in rows}
 
 
-async def run_workshop(session: AsyncSession, analysis: Analysis, numero: int) -> Workshop:
-    """Exécute l'atelier `numero` et persiste sa sortie (status awaiting_validation)."""
+async def _clear_workshop(session: AsyncSession, analysis_id: uuid.UUID, numero: int) -> None:
+    """Supprime l'atelier `numero` et les ressources qui lui sont dérivées (reprise)."""
+    workshop = await session.scalar(
+        select(Workshop).where(
+            Workshop.analysis_id == analysis_id, Workshop.numero == numero
+        )
+    )
+    if workshop is None:
+        return
+    await session.delete(workshop)
+
+    if numero == 1:
+        for table in (Asset, FearedEvent):
+            rows = await session.scalars(
+                select(table).where(table.analysis_id == analysis_id)
+            )
+            for row in rows:
+                await session.delete(row)
+    elif numero == 2:
+        rows = await session.scalars(
+            select(RiskSource).where(RiskSource.analysis_id == analysis_id)
+        )
+        for row in rows:
+            await session.delete(row)
+    elif numero == 3:
+        rows = await session.scalars(
+            select(Scenario).where(
+                Scenario.analysis_id == analysis_id,
+                Scenario.kind == ScenarioKind.STRATEGIQUE,
+            )
+        )
+        for row in rows:
+            await session.delete(row)
+    elif numero == 4:
+        rows = await session.scalars(
+            select(Scenario).where(
+                Scenario.analysis_id == analysis_id,
+                Scenario.kind == ScenarioKind.OPERATIONNEL,
+            )
+        )
+        for row in rows:
+            await session.delete(row)
+    elif numero == 5:
+        rows = await session.scalars(
+            select(Risk).where(Risk.analysis_id == analysis_id)
+        )
+        for row in rows:
+            await session.delete(row)
+    await session.flush()
+
+
+async def run_workshop(
+    session: AsyncSession,
+    analysis: Analysis,
+    numero: int,
+    corrections: list[str] | None = None,
+) -> Workshop:
+    """Exécute l'atelier `numero` et persiste sa sortie (status awaiting_validation).
+
+    Si `corrections` est fourni, elles sont injectées dans la consigne de l'atelier
+    (reprise ciblée). Un atelier existant du même numéro est remplacé.
+    """
+    await _clear_workshop(session, analysis.id, numero)
+
     start = time.monotonic()
     knowledge_context = ""
     if numero >= 2:
@@ -63,29 +136,49 @@ async def run_workshop(session: AsyncSession, analysis: Analysis, numero: int) -
         "si_description": analysis.si_description,
         "workshop_outputs": await _load_outputs(session, analysis.id),
         "knowledge_context": knowledge_context,
+        "workshop_corrections": corrections or [],
     }
 
-    output = await WORKSHOP_FUNCTIONS[numero](state)
+    agent_name = AGENT_BY_WORKSHOP[numero]
+    try:
+        output = await WORKSHOP_FUNCTIONS[numero](state)
+    except Exception as exc:
+        session.add(
+            AgentRun(
+                analysis_id=analysis.id,
+                agent=agent_name,
+                workshop=numero,
+                prompt_version=WORKSHOP_PROMPTS[agent_name]["version"],
+                output={"error": str(exc)},
+                status=AgentRunStatus.FAILED,
+            )
+        )
+        analysis.status = AnalysisStatus.FAILED
+        await session.commit()
+        raise
 
     workshop = Workshop(
         analysis_id=analysis.id,
         numero=numero,
         status=WorkshopStatus.AWAITING_VALIDATION,
         output=output,
+        corrections=corrections or [],
     )
     session.add(workshop)
     await session.flush()
 
     duration_ms = int((time.monotonic() - start) * 1000)
-    agent_name = AGENT_BY_WORKSHOP[numero]
+    llm_meta = output.get("_llm", {}) if isinstance(output, dict) else {}
     session.add(
         AgentRun(
             analysis_id=analysis.id,
             agent=agent_name,
             workshop=numero,
             prompt_version=WORKSHOP_PROMPTS[agent_name]["version"],
-            input_snapshot=None,
+            input_snapshot=_state_hash(state),
             output=output,
+            tokens_in=llm_meta.get("tokens_in", 0),
+            tokens_out=llm_meta.get("tokens_out", 0),
             duration_ms=duration_ms,
             status=AgentRunStatus.SUCCESS,
         )
@@ -269,3 +362,35 @@ async def validate_workshop(
         return workshop
 
     return await run_workshop(session, analysis, numero + 1)
+
+
+async def correct_workshop(
+    session: AsyncSession,
+    analysis: Analysis,
+    numero: int,
+    corrections: list[str],
+    user: str,
+) -> Workshop:
+    """Relance l'atelier `numero` avec des corrections humaines (reprise ciblée)."""
+    workshop = await session.scalar(
+        select(Workshop).where(
+            Workshop.analysis_id == analysis.id, Workshop.numero == numero
+        )
+    )
+    if workshop is None or workshop.status != WorkshopStatus.AWAITING_VALIDATION:
+        raise ValueError("Cet atelier n'est pas en attente de validation")
+    return await run_workshop(session, analysis, numero, corrections=corrections)
+
+
+async def retry_workshop(
+    session: AsyncSession, analysis: Analysis, numero: int, user: str
+) -> Workshop:
+    """Relance l'atelier `numero` à l'identique (nouvelle génération)."""
+    workshop = await session.scalar(
+        select(Workshop).where(
+            Workshop.analysis_id == analysis.id, Workshop.numero == numero
+        )
+    )
+    if workshop is None or workshop.status != WorkshopStatus.AWAITING_VALIDATION:
+        raise ValueError("Cet atelier n'est pas en attente de validation")
+    return await run_workshop(session, analysis, numero)

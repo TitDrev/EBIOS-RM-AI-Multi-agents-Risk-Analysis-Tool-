@@ -9,23 +9,27 @@ from app.llm.factory import get_llm_provider
 T = TypeVar("T", bound=BaseModel)
 
 
-async def run_json_workshop(system_prompt: str, user_prompt: str, schema: type[T]) -> T:
-    """Appelle le LLM en mode JSON et valide la sortie contre `schema`.
+async def run_json_workshop(
+    system_prompt: str, user_prompt: str, schema: type[T]
+) -> tuple[T, int, int]:
+    """Appelle le LLM en mode JSON, valide la sortie contre `schema`.
 
     En cas de sortie invalide, retente avec un rappel ciblé du problème à corriger.
+    Retourne (modèle validé, tokens_in, tokens_out) pour la traçabilité.
     """
     provider = get_llm_provider()
     prompt = user_prompt
     last_error: str | None = None
+    tokens_in = tokens_out = 0
 
     for _ in range(3):
-        data = await provider.complete_json(system_prompt, prompt)
+        data, tokens_in, tokens_out = await provider.complete_structured(system_prompt, prompt)
         if data is None:
             last_error = "Le LLM n'a pas produit de JSON valide."
             prompt = _append_format_reminder(user_prompt, schema, last_error)
             continue
         try:
-            return schema.model_validate(data)
+            return schema.model_validate(data), tokens_in, tokens_out
         except ValidationError as exc:
             last_error = _format_errors(exc)
             prompt = _append_format_reminder(user_prompt, schema, last_error)

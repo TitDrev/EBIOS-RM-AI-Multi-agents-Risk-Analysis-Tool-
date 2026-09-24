@@ -24,5 +24,5 @@ async def test_workshop_4_produces_operational_scenarios(mock_llm):
     assert scenario["identifiant"] == "O-01"
     assert scenario["scenario_strategique"] == "S-01"
     assert "T1190" in scenario["techniques_attaque"]
-    # gravite=eleve, vraisemblance=moyen → niveau "eleve"
-    assert scenario["niveau"] == "eleve"
+    # gravité g4, vraisemblance v3 → niveau "critique"
+    assert scenario["niveau"] == "critique"

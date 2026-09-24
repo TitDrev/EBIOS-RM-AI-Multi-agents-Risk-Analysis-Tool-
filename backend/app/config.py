@@ -3,7 +3,10 @@
 from functools import lru_cache
 from typing import Literal
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+_WEAK_SECRET_KEYS = {"change-me", "change-me-en-production", "dev-secret-key-not-for-production", ""}
 
 
 class Settings(BaseSettings):
@@ -36,6 +39,15 @@ class Settings(BaseSettings):
     @property
     def cors_origins_list(self) -> list[str]:
         return [o.strip() for o in self.CORS_ORIGINS.split(",") if o.strip()]
+
+    @model_validator(mode="after")
+    def _check_secret_key(self) -> "Settings":
+        if not self.DEBUG and self.SECRET_KEY in _WEAK_SECRET_KEYS:
+            raise ValueError(
+                "SECRET_KEY doit être définie à une valeur forte hors mode DEBUG "
+                "(lancement refusé)."
+            )
+        return self
 
 
 @lru_cache

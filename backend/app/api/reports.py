@@ -1,14 +1,13 @@
 """Routeur du compte rendu final."""
 
 import asyncio
-import uuid
 from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.deps import require_analyst
+from app.core.deps import get_owned_analysis, require_analyst
 from app.database import get_session
 from app.models.analysis import Analysis
 from app.models.user import User
@@ -21,16 +20,13 @@ ReportFormat = Literal["json", "csv", "pdf"]
 
 @router.post("")
 async def generate_report(
-    analysis_id: uuid.UUID,
     format: ReportFormat = "json",
     session: AsyncSession = Depends(get_session),
+    analysis: Analysis = Depends(get_owned_analysis),
     user: User = Depends(require_analyst),
 ) -> Response:
-    analysis = await session.get(Analysis, analysis_id)
-    if analysis is None:
-        raise HTTPException(status_code=404, detail="Étude introuvable")
-
-    data = await report_generator.build_report_data(session, analysis_id)
+    analysis_id = analysis.id
+    data = await report_generator.build_report_data(session, analysis.id)
 
     if format == "json":
         from fastapi.responses import JSONResponse

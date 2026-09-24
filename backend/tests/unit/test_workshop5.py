@@ -26,5 +26,6 @@ async def test_workshop_5_produces_risk_register(mock_llm):
     assert risque["identifiant"] == "R-01"
     assert risque["traitement"] == "reduire"
     assert "MFA" in risque["mesures"]
-    assert risque["risque_residuel"] == "faible"
+    assert risque["niveau"] == "critique"
+    assert risque["risque_residuel"] == "moyen"
     assert output["plan_traitement"]

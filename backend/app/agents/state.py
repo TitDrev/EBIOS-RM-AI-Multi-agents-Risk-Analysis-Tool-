@@ -9,3 +9,4 @@ class AnalysisState(TypedDict, total=False):
     workshop_outputs: dict[int, dict]
     current_workshop: int
     knowledge_context: str
+    workshop_corrections: list[str]

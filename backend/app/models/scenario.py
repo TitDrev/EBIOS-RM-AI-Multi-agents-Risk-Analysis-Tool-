@@ -6,7 +6,7 @@ from sqlalchemy import JSON, String, Uuid
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.database import Base
-from app.models.enums import Level, RiskLevel, ScenarioKind
+from app.models.enums import GravityLevel, LikelihoodLevel, RiskLevel, ScenarioKind
 from app.models.mixins import TimestampMixin, UUIDPrimaryKeyMixin
 
 
@@ -19,8 +19,8 @@ class Scenario(UUIDPrimaryKeyMixin, TimestampMixin, Base):
     source_risque_id: Mapped[uuid.UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
     evenement_redoute_id: Mapped[uuid.UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
     parent_id: Mapped[uuid.UUID | None] = mapped_column(Uuid(as_uuid=True), nullable=True)
-    gravite: Mapped[Level | None] = mapped_column(String(20), nullable=True)
-    vraisemblance: Mapped[Level | None] = mapped_column(String(20), nullable=True)
+    gravite: Mapped[GravityLevel | None] = mapped_column(String(20), nullable=True)
+    vraisemblance: Mapped[LikelihoodLevel | None] = mapped_column(String(20), nullable=True)
     niveau: Mapped[RiskLevel | None] = mapped_column(String(20), nullable=True)
     description: Mapped[str | None] = mapped_column(String(4000), nullable=True)
     detail: Mapped[dict] = mapped_column(JSON, default=dict)

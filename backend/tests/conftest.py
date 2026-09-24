@@ -26,12 +26,12 @@ MOCK_CADRAGE_JSON = """
   ],
   "evenements_redoutes": [
     {"bien_essentiel": "Données clients", "besoin": "confidentialite",
-     "label": "Fuite de données clients", "gravite": "eleve"}
+     "label": "Fuite de données clients", "gravite": "g4"}
   ],
   "socle_securite": [
-    {"mesure": "Pare-feu", "referentiel": "ISO 27002"}
+    {"mesure": "Pare-feu", "referentiel": "ISO 27002", "ecart": null}
   ],
-  "echelles": {"gravite": ["faible", "moyen", "eleve"], "vraisemblance": ["faible", "moyen", "eleve"]}
+  "echelles": {"gravite": ["g1","g2","g3","g4"], "vraisemblance": ["v1","v2","v3","v4"]}
 }
 """
 
@@ -39,7 +39,8 @@ MOCK_WORKSHOP2_JSON = """
 {
   "sources_risques": [
     {"type": "attaquant_externe", "name": "Pirate", "objectif": "Vol de données",
-     "motivation": "financière", "capacite": "eleve", "biens_vises": ["Données clients"],
+     "motivation": "financière", "activite": "Exploitation de failles web",
+     "capacite": "g3", "biens_vises": ["Données clients"],
      "pertinence": "retenue", "description": "Attaquant externe ciblant les données clients"}
   ]
 }
@@ -47,10 +48,13 @@ MOCK_WORKSHOP2_JSON = """
 
 MOCK_WORKSHOP3_JSON = """
 {
+  "parties_prenantes": [
+    {"name": "Hébergeur", "role": "Prestataire", "motif_criticite": "dépendance"}
+  ],
   "scenarios_strategiques": [
     {"identifiant": "S-01", "source_risque": "Pirate",
      "evenement_redoute": "Fuite de données clients", "bien_essentiel": "Données clients",
-     "gravite": "eleve", "vraisemblance": "moyen"}
+     "gravite": "g3", "sources": ["EBIOS RM"]}
   ]
 }
 """
@@ -63,7 +67,7 @@ MOCK_WORKSHOP4_JSON = """
      "chemin_attaque": ["Scan du site", "Exploit d'une faille", "Exfiltration"],
      "biens_supports_impliques": ["Serveur web"],
      "techniques_attaque": ["T1190", "T1048"],
-     "gravite": "eleve", "vraisemblance": "moyen"}
+     "gravite": "g4", "vraisemblance": "v3", "sources": ["MITRE ATT&CK"]}
   ]
 }
 """
@@ -73,9 +77,9 @@ MOCK_WORKSHOP5_JSON = """
   "risques": [
     {"identifiant": "R-01", "scenario_operationnel": "O-01", "scenario_strategique": "S-01",
      "bien_essentiel": "Données clients", "evenement_redoute": "Fuite de données clients",
-     "source_risque": "Pirate", "gravite": "eleve", "vraisemblance": "moyen",
-     "niveau": "eleve", "traitement": "reduire", "mesures": ["MFA", "Chiffrement"],
-     "risque_residuel": "faible", "justification": "Mesures standard ISO 27002",
+     "source_risque": "Pirate", "gravite": "g4", "vraisemblance": "v3",
+     "niveau": "critique", "traitement": "reduire", "mesures": ["MFA", "Chiffrement"],
+     "risque_residuel": "moyen", "justification": "Mesures standard ISO 27002",
      "sources": ["ISO 27002"]}
   ],
   "plan_traitement": "Prioriser les mesures de protection des données clients."
@@ -106,6 +110,12 @@ class ConfigurableMockLLM:
 
         resp = await self.complete(system_prompt, user_prompt, tools, json_mode=True)
         return _extract_json(resp.content)
+
+    async def complete_structured(self, system_prompt, user_prompt, tools=None):
+        from app.llm.base import _extract_json
+
+        resp = await self.complete(system_prompt, user_prompt, tools, json_mode=True)
+        return _extract_json(resp.content), 10, 10
 
 
 @pytest.fixture

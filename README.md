@@ -10,16 +10,21 @@ Application web multi-agents pour l'analyse de risques des systèmes d'informati
 ## Fonctionnalités
 
 - **5 ateliers EBIOS RM automatisés** :
-  1. Cadrage et socle de sécurité (biens essentiels/supports, besoins DICP, événements redoutés, socle)
-  2. Sources de risques (attaquants, internes, sinistres)
-  3. Scénarios stratégiques (gravité × vraisemblance)
-  4. Scénarios opérationnels (chemins d'attaque, MITRE ATT&CK)
-  5. Traitement du risque (stratégies, mesures, risque résiduel → registre)
-- **Validation humaine entre chaque atelier** (pipeline pas à pas, reprise ciblée)
+  1. Cadrage et socle de sécurité (biens essentiels/supports, besoins DICP, événements redoutés, socle avec écarts relevés)
+  2. Sources de risques (menaces intentionnelles, couples source de risque / objectif visé SR/OV)
+  3. Scénarios stratégiques (parties prenantes critiques + scénarios **cotés en gravité G1→G4**)
+  4. Scénarios opérationnels (chemins d'attaque, MITRE ATT&CK, **vraisemblance V1→V4 évaluée ici**)
+  5. Traitement du risque (stratégies réduire/transférer/éviter/accepter, mesures, risque résiduel → **registre des risques**)
+- **Échelles EBIOS RM** : gravité **G1→G4**, vraisemblance **V1→V4**, matrice 4×4 → niveau faible/moyen/élevé/critique calculé de façon **déterministe dans le code**
+- **Validation humaine entre chaque atelier** : valider, **corriger** (reprise ciblée avec corrections) ou **relancer** un atelier
 - **Compte rendu final** : registre des risques argumenté + plan de traitement (JSON/CSV/PDF)
-- **Multi-agents** : un agent par atelier, orchestrés par LangGraph, consignes versionnées
+- **Multi-agents** : un agent par atelier, orchestrés par LangGraph, consignes versionnées (v1.1)
 - **RAG** : base de connaissances (EBIOS RM, ISO 27005, ISO 27002, ANSSI)
-- **Garde-fous IA** : sources obligatoires par risque, outils en lecture seule, filtrage des injections de prompt
+- **Garde-fous IA** :
+  - **Validation croisée entre ateliers** (références fantômes rejetées/alignées, techniques ATT&CK hors catalogue filtrées)
+  - Champ `sources` obligatoire sur les scénarios et les risques
+  - Protection contre l'injection de prompt (données délimitées `[DONNÉES]…[/DONNÉES]` + détection de motifs + consigne de sécurité)
+  - Outils en lecture seule, rôles et accès par propriétaire, `SECRET_KEY` refusée au démarrage si faible hors DEBUG
 
 ---
 
@@ -133,6 +138,8 @@ sprint.md
 | POST | `/api/analyses/{id}/start` | Lancer le pipeline des 5 ateliers |
 | GET | `/api/analyses/{id}/workshops` | Statut des ateliers |
 | POST | `/api/analyses/{id}/workshops/{n}/validate` | **Validation humaine** d'un atelier |
+| POST | `/api/analyses/{id}/workshops/{n}/correct` | **Corriger** un atelier (reprise ciblée) |
+| POST | `/api/analyses/{id}/workshops/{n}/retry` | **Relancer** un atelier |
 | GET | `/api/analyses/{id}/assets` | Biens essentiels / supports |
 | GET | `/api/analyses/{id}/risk-sources` | Sources de risques |
 | GET | `/api/analyses/{id}/scenarios` | Scénarios stratégiques & opérationnels |
@@ -158,6 +165,25 @@ Risques propres aux LLM traités (référence : OWASP Top 10 for LLM Application
 
 ---
 
+## Outils IA utilisés (dossier)
+
+Transparence exigée par le cadre du projet (item 7 de la liste de contrôle) :
+
+- **Moteur d'analyse des agents** : `deepseek-v4-pro` fourni par la plateforme **Opencode Go**,
+  accédé via un endpoint compatible OpenAI. Choix justifié : bon compromis qualité/coût sur des
+  tâches structurées (génération JSON, raisonnement sur des grilles), modèle remplaçable derrière
+  la couche `LLMProvider`.
+- **Assistance au développement** : le code a été rédigé avec l'aide d'un assistant de code IA
+  (opencode), à partir du cahier des charges et du modèle de sprint fournis dans le dépôt.
+- **Bibliothèques** : FastAPI, LangGraph, SQLAlchemy, Pydantic, pgvector, WeasyPrint (PDF).
+
+> Note honnête sur le périmètre EBIOS RM : l'outil simplifie volontairement la méthode
+> (échelles G1-G4/V1-V4, socle synthétisé). Les livrables « humains » du projet — dossier écrit,
+> analyse manuelle de référence (pour comparer les agents), description des cas A/B/C et noms des
+> membres de l'équipe — restent à produire par le groupe.
+
+---
+
 ## Roadmap / statut des sprints
 
 - [x] Sprint 1 — Fondations (backend, BDD, auth, LLMProvider, Docker, CI)
@@ -165,8 +191,11 @@ Risques propres aux LLM traités (référence : OWASP Top 10 for LLM Application
 - [x] Sprint 3 — Ateliers 2 & 3 (sources de risques, scénarios stratégiques) + RAG
 - [x] Sprint 4 — Atelier 4 (scénarios opérationnels, MITRE ATT&CK) + outils
 - [x] Sprint 5 — Atelier 5 (traitement du risque) + registre + compte rendu (JSON/CSV/PDF)
-- [ ] Sprint 6 — WebSocket de suivi en temps réel + reprises ciblées complètes
-- [ ] Sprint 7 — Tests complets, cas de référence, documentation, audit, déploiement
+- [ ] Sprint 6 — WebSocket de suivi en temps réel du pipeline + comparaison d'études
+- [ ] Sprint 7 — Cas de référence (A/B/C), dossier écrit, audit, déploiement
+
+> Les reprises ciblées (corriger/relancer un atelier) sont d'ores et déjà disponibles via
+> `/workshops/{n}/correct` et `/workshops/{n}/retry`.
 
 ---
 
@@ -174,9 +203,8 @@ Risques propres aux LLM traités (référence : OWASP Top 10 for LLM Application
 
 ```bash
 cd backend
-pytest                      # unitaire + intégration
+pytest                      # unitaire + intégration (40 tests)
 ruff check app tests        # lint
 mypy app                    # typage
 ```
-
-> Les tests utilisent un LLM mock (aucun appel réseau) et une base `risk_agents_test` (PostgreSQL + pgvector).
+> Les tests utilisent un LLM mock (aucun appel réseau) et une base `risk_agents_test` (PostgreSQL + pgvector). Ils couvrent aussi l'injection de prompt et la validation croisée entre ateliers.

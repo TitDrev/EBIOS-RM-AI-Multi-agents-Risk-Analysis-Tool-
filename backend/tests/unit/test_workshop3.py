@@ -23,7 +23,10 @@ async def test_workshop_3_computes_risk_level(mock_llm):
     }
     output = await run_workshop_3(state)
 
-    scenario = output["scenarios_strategiques"][0]
+    output2 = output
+    scenario = output2["scenarios_strategiques"][0]
     assert scenario["identifiant"] == "S-01"
-    # gravite=eleve, vraisemblance=moyenne → niveau "eleve"
-    assert scenario["niveau"] == "eleve"
+    assert scenario["gravite"] == "g3"
+    # La vraisemblance n'est PAS cotée à l'atelier 3 (elle le sera à l'atelier 4)
+    assert "vraisemblance" not in scenario
+    assert output2["parties_prenantes"][0]["name"] == "Hébergeur"

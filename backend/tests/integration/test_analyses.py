@@ -93,9 +93,11 @@ async def test_create_start_validate_flow(client, mock_llm):
     strategiques = [s for s in resp.json() if s["kind"] == "strategique"]
     operationnels = [s for s in resp.json() if s["kind"] == "operationnel"]
     assert strategiques
-    assert strategiques[0]["niveau"] == "eleve"
+    # L'atelier 3 cote la gravité uniquement (la vraisemblance arrive à l'atelier 4)
+    assert strategiques[0]["gravite"] == "g3"
     assert operationnels
     assert operationnels[0]["identifiant"] == "O-01"
+    assert operationnels[0]["niveau"] == "critique"
 
     # Validation de l'atelier 4 → Atelier 5 produit (registre des risques)
     resp = await client.post(
@@ -161,3 +163,56 @@ async def test_validate_unstarted_workshop_conflicts(client, mock_llm):
         headers=headers,
     )
     assert resp.status_code == 409
+
+
+@pytest.mark.asyncio
+async def test_correct_workshop_reruns_same_atelier(client, mock_llm):
+    token = await _register_and_token(client)
+    headers = {"Authorization": f"Bearer {token}"}
+
+    resp = await client.post(
+        "/api/analyses",
+        json={"name": "Boutique", "si_description": {"nom": "Boutique en ligne"}},
+        headers=headers,
+    )
+    analysis_id = resp.json()["id"]
+    await client.post(f"/api/analyses/{analysis_id}/start", headers=headers)
+
+    # Correction de l'atelier 1 : relance SANS créer un doublon (toujours atelier 1).
+    resp = await client.post(
+        f"/api/analyses/{analysis_id}/workshops/1/correct",
+        json={"corrections": ["Ajouter le bien 'Catalogue'"]},
+        headers=headers,
+    )
+    assert resp.status_code == 200, resp.text
+    assert resp.json()["numero"] == 1
+    assert resp.json()["status"] == "awaiting_validation"
+    assert resp.json()["corrections"] == ["Ajouter le bien 'Catalogue'"]
+
+
+@pytest.mark.asyncio
+async def test_cannot_access_other_user_analysis(client, mock_llm):
+    token = await _register_and_token(client)
+    headers = {"Authorization": f"Bearer {token}"}
+    resp = await client.post(
+        "/api/analyses",
+        json={"name": "Étude secrète", "si_description": {}},
+        headers=headers,
+    )
+    analysis_id = resp.json()["id"]
+
+    # Deuxième utilisateur ne doit PAS accéder aux études du premier.
+    await client.post(
+        "/api/auth/register",
+        json={"username": "viewer1", "email": "viewer1@example.com", "password": "supersecret1"},
+    )
+    resp = await client.post(
+        "/api/auth/login/json", json={"username": "viewer1", "password": "supersecret1"}
+    )
+    other_headers = {"Authorization": f"Bearer {resp.json()['access_token']}"}
+
+    resp = await client.get(f"/api/analyses/{analysis_id}", headers=other_headers)
+    assert resp.status_code == 403
+
+    resp = await client.get("/api/analyses", headers=other_headers)
+    assert all(a["id"] != analysis_id for a in resp.json())

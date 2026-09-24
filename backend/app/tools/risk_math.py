@@ -1,27 +1,40 @@
-"""Calcul du niveau de risque à partir de la matrice gravité × vraisemblance (EBIOS RM)."""
+"""Calcul du niveau de risque à partir de la matrice gravité × vraisemblance (EBIOS RM).
 
-from app.models.enums import Level, RiskLevel
+Échelles : gravité G1→G4, vraisemblance V1→V4. La matrice 4×4 donne un niveau de
+risque sur 4 classes : faible, moyen, élevé, critique.
+"""
 
-# Matrice : vraisemblance (lignes) × gravité (colonnes) → niveau de risque
-_MATRIX: dict[Level, dict[Level, RiskLevel]] = {
-    Level.ELEVE: {
-        Level.FAIBLE: RiskLevel.MOYEN,
-        Level.MOYEN: RiskLevel.ELEVE,
-        Level.ELEVE: RiskLevel.CRITIQUE,
+from app.models.enums import GravityLevel, LikelihoodLevel, RiskLevel
+
+# Matrice : vraisemblance (lignes V1→V4) × gravité (colonnes G1→G4) → niveau de risque.
+_MATRIX: dict[LikelihoodLevel, dict[GravityLevel, RiskLevel]] = {
+    LikelihoodLevel.V1: {
+        GravityLevel.G1: RiskLevel.FAIBLE,
+        GravityLevel.G2: RiskLevel.FAIBLE,
+        GravityLevel.G3: RiskLevel.MOYEN,
+        GravityLevel.G4: RiskLevel.ELEVE,
     },
-    Level.MOYEN: {
-        Level.FAIBLE: RiskLevel.FAIBLE,
-        Level.MOYEN: RiskLevel.MOYEN,
-        Level.ELEVE: RiskLevel.ELEVE,
+    LikelihoodLevel.V2: {
+        GravityLevel.G1: RiskLevel.FAIBLE,
+        GravityLevel.G2: RiskLevel.MOYEN,
+        GravityLevel.G3: RiskLevel.ELEVE,
+        GravityLevel.G4: RiskLevel.ELEVE,
     },
-    Level.FAIBLE: {
-        Level.FAIBLE: RiskLevel.FAIBLE,
-        Level.MOYEN: RiskLevel.FAIBLE,
-        Level.ELEVE: RiskLevel.MOYEN,
+    LikelihoodLevel.V3: {
+        GravityLevel.G1: RiskLevel.MOYEN,
+        GravityLevel.G2: RiskLevel.MOYEN,
+        GravityLevel.G3: RiskLevel.ELEVE,
+        GravityLevel.G4: RiskLevel.CRITIQUE,
+    },
+    LikelihoodLevel.V4: {
+        GravityLevel.G1: RiskLevel.MOYEN,
+        GravityLevel.G2: RiskLevel.ELEVE,
+        GravityLevel.G3: RiskLevel.CRITIQUE,
+        GravityLevel.G4: RiskLevel.CRITIQUE,
     },
 }
 
 
-def compute_risk_level(vraisemblance: Level, gravite: Level) -> RiskLevel:
-    """Retourne le niveau de risque correspondant à la matrice EBIOS RM."""
+def compute_risk_level(vraisemblance: LikelihoodLevel, gravite: GravityLevel) -> RiskLevel:
+    """Retourne le niveau de risque correspondant à la matrice gravité × vraisemblance."""
     return _MATRIX[vraisemblance][gravite]

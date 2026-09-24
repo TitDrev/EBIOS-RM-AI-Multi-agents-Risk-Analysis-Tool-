@@ -59,12 +59,22 @@ class ScenarioKind(StrEnum):
     OPERATIONNEL = "operationnel"
 
 
-class Level(StrEnum):
-    """Échelle de gravité / vraisemblance (3 niveaux)."""
+class GravityLevel(StrEnum):
+    """Échelle de gravité EBIOS RM : G1 (la plus faible) → G4 (la plus élevée)."""
 
-    FAIBLE = "faible"
-    MOYEN = "moyen"
-    ELEVE = "eleve"
+    G1 = "g1"
+    G2 = "g2"
+    G3 = "g3"
+    G4 = "g4"
+
+
+class LikelihoodLevel(StrEnum):
+    """Échelle de vraisemblance EBIOS RM : V1 (la plus faible) → V4 (la plus élevée)."""
+
+    V1 = "v1"
+    V2 = "v2"
+    V3 = "v3"
+    V4 = "v4"
 
 
 class RiskLevel(StrEnum):

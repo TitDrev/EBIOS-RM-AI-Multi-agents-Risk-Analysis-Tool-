@@ -42,6 +42,12 @@ def test_extract_json_homoglyph_key():
     assert result == {"sources_risques": [{"type": "attaquant_externe"}]}
 
 
-def test_extract_json_double_encoded_string():
-    result = _extract_json('"{\\"sources_risques\\": []}"')
-    assert result == {"sources_risques": []}
+def test_extract_json_preserves_values():
+    # Les VALEURS ne doivent pas être altérées (homoglyphes traités uniquement sur les clés).
+    result = _extract_json('{"note": "200 μs et Серверы (Россия) restent intacts", "x": 1}')
+    assert result == {"note": "200 μs et Серверы (Россия) restent intacts", "x": 1}
+
+
+def test_extract_json_spaced_key():
+    result = _extract_json('{"  sources_risques ": [1]}')
+    assert result == {"sources_risques": [1]}

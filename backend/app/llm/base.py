@@ -51,12 +51,27 @@ class LLMProvider(ABC):
         response = await self.complete(system_prompt, user_prompt, tools, json_mode=True)
         return _extract_json(response.content)
 
+    async def complete_structured(
+        self,
+        system_prompt: str,
+        user_prompt: str,
+        tools: list[LLMTool] | None = None,
+    ) -> tuple[dict[str, Any] | None, int, int]:
+        """Appel JSON avec retour de la réponse parsée et des tokens utilisés."""
+        response = await self.complete(system_prompt, user_prompt, tools, json_mode=True)
+        return _extract_json(response.content), response.tokens_in, response.tokens_out
+
 
 def _extract_json(content: str) -> dict[str, Any] | None:
-    """Extrait un objet JSON depuis le texte d'un LLM (tolérant aux fioritures)."""
+    """Extrait un objet JSON depuis le texte d'un LLM (tolérant aux fioritures).
+
+    La normalisation des homoglyphes s'applique uniquement aux CLÉS du JSON parsé
+    (jamais aux valeurs), ce qui évite d'altérer du contenu légitime (Cyrillique,
+    symboles, etc.).
+    """
     import json
 
-    content = _normalize_homoglyphs(content.strip())
+    content = content.strip()
     if content.startswith("```"):
         content = content.strip("`")
         if content.startswith("json"):
@@ -66,7 +81,7 @@ def _extract_json(content: str) -> dict[str, Any] | None:
     # 1) Essai direct sur tout le contenu (gère le JSON double-encodé en string).
     try:
         data = json.loads(content)
-        return _unwrap_json(data)
+        return _normalize_keys(_unwrap_json(data))
     except json.JSONDecodeError:
         pass
 
@@ -79,7 +94,27 @@ def _extract_json(content: str) -> dict[str, Any] | None:
         data = json.loads(content[start : end + 1])
     except json.JSONDecodeError:
         return None
-    return _unwrap_json(data)
+    return _normalize_keys(_unwrap_json(data))
+
+
+def _normalize_keys(value: Any, depth: int = 0) -> Any:
+    """Normalise récursivement les CLÉS d'un JSON (homoglyphes + espaces)."""
+    if depth > 5:
+        return value
+    if isinstance(value, dict):
+        return {
+            _normalize_key(key): _normalize_keys(val, depth + 1)
+            for key, val in value.items()
+        }
+    if isinstance(value, list):
+        return [_normalize_keys(item, depth + 1) for item in value]
+    return value
+
+
+def _normalize_key(key: str) -> str:
+    if isinstance(key, str):
+        return key.translate(_HOMOGLYPHS).strip()
+    return key
 
 
 def _unwrap_json(data: Any, depth: int = 0) -> Any:
@@ -106,8 +141,3 @@ _HOMOGLYPHS = str.maketrans(
         "س": "s", "ا": "a", "ي": "y",
     }
 )
-
-
-def _normalize_homoglyphs(text: str) -> str:
-    """Remplace les homoglyphes par leurs équivalents latins."""
-    return text.translate(_HOMOGLYPHS)
